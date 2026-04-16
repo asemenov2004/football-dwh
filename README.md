@@ -36,7 +36,7 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 docker compose up -d
 
 # 3. Проверить (должны открываться):
-# Airflow:    http://localhost:8080   (admin/admin)
+# Airflow:    http://localhost:18080  (admin/admin)  — 8080 часто занят HP Smart/ApplicationWebServer
 # MinIO:      http://localhost:9001   (minioadmin/minioadmin123)
 # ClickHouse: http://localhost:8123/play
 # Superset:   http://localhost:8088   (admin/admin)
