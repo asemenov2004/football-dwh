@@ -1,0 +1,52 @@
+# Data volumes (bind mounts)
+data/
+logs/
+
+# Environment
+.env
+*.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# dbt
+target/
+dbt_packages/
+.user.yml
+
+# Spark
+*.crc
+_SUCCESS
+spark-warehouse/
+derby.log
+metastore_db/
+
+# Airflow
+airflow.cfg
+airflow.db
+webserver_config.py
+standalone_admin_password.txt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Secrets
+*.pem
+*.key
+!docker/**/*.key

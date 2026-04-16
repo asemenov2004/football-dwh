@@ -1,0 +1,6 @@
+# Зависимости будут добавляться по этапам.
+# Сейчас — минимум, чтобы собрался образ.
+# Этап 1 добавит: requests, statsbombpy, minio, apache-airflow-providers-amazon
+# Этап 3: dbt-core, dbt-postgres
+# Этап 5: clickhouse-connect, apache-airflow-providers-postgres
+# Этап 7: apache-airflow-providers-apache-spark
