@@ -1,0 +1,287 @@
+# Football DWH — единый Docker Compose стек.
+# Поднять: cp .env.example .env && docker compose up -d
+# Сервисы:
+#   postgres     — метаданные Airflow + DWH (две БД в одном инстансе)
+#   minio        — raw lake (S3-compatible)
+#   clickhouse   — data marts
+#   airflow-*    — webserver + scheduler + init (LocalExecutor)
+#   superset-*   — BI + init (поднят заранее для знакомства, наполняется на Этапе 6)
+#   spark-*      — master + worker Standalone (используется на Этапе 7)
+
+x-airflow-common: &airflow-common
+  build:
+    context: ./docker/airflow
+    dockerfile: Dockerfile
+  image: football-dwh/airflow:2.9.3
+  environment: &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_AIRFLOW_DB}
+    AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
+    AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY}
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
+    AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
+    # Для Этапа 1 пригодится — чтобы DAG видел ingestion/ модули
+    PYTHONPATH: "/opt/airflow:/opt/airflow/ingestion"
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./ingestion:/opt/airflow/ingestion
+    - ./data/airflow/logs:/opt/airflow/logs
+    - ./data/airflow/plugins:/opt/airflow/plugins
+  user: "${AIRFLOW_UID:-50000}:0"
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+services:
+
+  # ---------- Postgres (Airflow metadata + DWH) ----------
+  postgres:
+    image: postgres:16.4
+    container_name: football_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: postgres
+      POSTGRES_AIRFLOW_DB: ${POSTGRES_AIRFLOW_DB}
+      POSTGRES_DWH_DB: ${POSTGRES_DWH_DB}
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+      - ./docker/postgres/init-multiple-databases.sh:/docker-entrypoint-initdb.d/10-init-multiple-databases.sh:ro
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    networks: [football_net]
+    restart: unless-stopped
+
+  # ---------- MinIO (raw lake) ----------
+  minio:
+    image: minio/minio:RELEASE.2024-10-02T17-50-41Z
+    container_name: football_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - ./data/minio:/data
+    ports:
+      - "${MINIO_API_PORT}:9000"
+      - "${MINIO_CONSOLE_PORT}:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    networks: [football_net]
+    restart: unless-stopped
+
+  # ---------- ClickHouse (data marts) ----------
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    container_name: football_clickhouse
+    environment:
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    volumes:
+      - ./data/clickhouse/data:/var/lib/clickhouse
+      - ./data/clickhouse/logs:/var/log/clickhouse-server
+    ports:
+      - "${CLICKHOUSE_HTTP_PORT}:8123"
+      - "${CLICKHOUSE_NATIVE_PORT}:9000"
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+    networks: [football_net]
+    restart: unless-stopped
+
+  # ---------- Airflow: init (миграции + admin user) ----------
+  airflow-init:
+    <<: *airflow-common
+    container_name: football_airflow_init
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        set -e
+        mkdir -p /opt/airflow/logs /opt/airflow/plugins
+        airflow db migrate
+        airflow users list | grep -q "${AIRFLOW_ADMIN_USER}" || \
+          airflow users create \
+            --username "${AIRFLOW_ADMIN_USER}" \
+            --password "${AIRFLOW_ADMIN_PASSWORD}" \
+            --firstname Admin --lastname User \
+            --role Admin --email admin@example.com
+    restart: "no"
+    networks: [football_net]
+
+  # ---------- Airflow: webserver ----------
+  airflow-webserver:
+    <<: *airflow-common
+    container_name: football_airflow_webserver
+    command: webserver
+    ports:
+      - "${AIRFLOW_WEBSERVER_PORT}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    networks: [football_net]
+    restart: unless-stopped
+
+  # ---------- Airflow: scheduler ----------
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: football_airflow_scheduler
+    command: scheduler
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 1500m
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    networks: [football_net]
+    restart: unless-stopped
+
+  # ---------- Superset: init ----------
+  superset-init:
+    image: apache/superset:4.0.2
+    container_name: football_superset_init
+    environment:
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY}
+      ADMIN_USERNAME: ${SUPERSET_ADMIN_USER}
+      ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD}
+    volumes:
+      - ./data/superset:/app/superset_home
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        set -e
+        superset db upgrade
+        superset fab list-users | grep -q "${ADMIN_USERNAME}" || \
+          superset fab create-admin \
+            --username "${ADMIN_USERNAME}" \
+            --password "${ADMIN_PASSWORD}" \
+            --firstname Admin --lastname User \
+            --email admin@example.com
+        superset init
+    restart: "no"
+    networks: [football_net]
+
+  # ---------- Superset: webserver ----------
+  superset:
+    image: apache/superset:4.0.2
+    container_name: football_superset
+    environment:
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY}
+    volumes:
+      - ./data/superset:/app/superset_home
+    ports:
+      - "${SUPERSET_PORT}:8088"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8088/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    depends_on:
+      superset-init:
+        condition: service_completed_successfully
+    networks: [football_net]
+    restart: unless-stopped
+
+  # ---------- Spark: master ----------
+  spark-master:
+    image: bitnami/spark:3.5
+    container_name: football_spark_master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    ports:
+      - "${SPARK_MASTER_PORT}:7077"
+      - "${SPARK_MASTER_UI_PORT}:8080"
+    volumes:
+      - ./spark:/opt/spark/jobs
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    networks: [football_net]
+    restart: unless-stopped
+
+  # ---------- Spark: worker ----------
+  spark-worker:
+    image: bitnami/spark:3.5
+    container_name: football_spark_worker
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=1500m
+      - SPARK_WORKER_CORES=2
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+    ports:
+      - "${SPARK_WORKER_UI_PORT}:8081"
+    volumes:
+      - ./spark:/opt/spark/jobs
+    depends_on:
+      - spark-master
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+    networks: [football_net]
+    restart: unless-stopped
+
+networks:
+  football_net:
+    name: football_net
+    driver: bridge
