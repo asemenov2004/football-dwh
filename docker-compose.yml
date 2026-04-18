@@ -9,6 +9,7 @@
 #   spark-*      — master + worker Standalone (используется на Этапе 7)
 
 x-airflow-common: &airflow-common
+  image: football_dwh/airflow:local
   build:
     context: ./docker/airflow
     dockerfile: Dockerfile
@@ -23,6 +24,11 @@ x-airflow-common: &airflow-common
     AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
     # Для Этапа 1 пригодится — чтобы DAG видел ingestion/ модули
     PYTHONPATH: "/opt/airflow:/opt/airflow/ingestion"
+    # Этап 1: ingestion читает эти переменные напрямую из окружения
+    MINIO_ENDPOINT: "minio:9000"
+    MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+    MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    API_FOOTBALL_KEY: ${API_FOOTBALL_KEY}
   volumes:
     - ./dags:/opt/airflow/dags
     - ./ingestion:/opt/airflow/ingestion
@@ -86,6 +92,30 @@ services:
           memory: 512m
     networks: [football_net]
     restart: unless-stopped
+
+  # ---------- MinIO: init (создание бакетов) ----------
+  # Один раз при старте стека создаёт бакеты под raw lake.
+  # Идемпотентно: mc mb --ignore-existing не падает, если бакет уже есть.
+  minio-init:
+    image: minio/mc:RELEASE.2024-10-02T08-27-28Z
+    container_name: football_minio_init
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        set -e
+        mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
+        mc mb --ignore-existing local/raw-api-football
+        mc mb --ignore-existing local/raw-statsbomb
+        mc ls local/
+    restart: "no"
+    networks: [football_net]
 
   # ---------- ClickHouse (data marts) ----------
   clickhouse:

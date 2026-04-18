@@ -1,6 +1,9 @@
-# Зависимости будут добавляться по этапам.
-# Сейчас — минимум, чтобы собрался образ.
-# Этап 1 добавит: requests, statsbombpy, minio, apache-airflow-providers-amazon
-# Этап 3: dbt-core, dbt-postgres
-# Этап 5: clickhouse-connect, apache-airflow-providers-postgres
-# Этап 7: apache-airflow-providers-apache-spark
+# Зависимости Airflow-образа. Добавляются по этапам.
+# Этап 3 добавит: dbt-core, dbt-postgres
+# Этап 5 добавит: clickhouse-connect, apache-airflow-providers-postgres
+# Этап 7 добавит: apache-airflow-providers-apache-spark
+
+# Этап 1 — ingestion в raw lake
+# requests не фиксируем: Airflow 2.9.3 тянет свою версию через constraints
+statsbombpy==1.17.0
+minio==7.2.20
