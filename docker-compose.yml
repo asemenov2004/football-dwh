@@ -22,16 +22,23 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
     AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
-    # Для Этапа 1 пригодится — чтобы DAG видел ingestion/ модули
-    PYTHONPATH: "/opt/airflow:/opt/airflow/ingestion"
+    # Чтобы DAG-и видели ingestion/ и stage/ модули.
+    PYTHONPATH: "/opt/airflow:/opt/airflow/ingestion:/opt/airflow/stage"
     # Этап 1: ingestion читает эти переменные напрямую из окружения
     MINIO_ENDPOINT: "minio:9000"
     MINIO_ROOT_USER: ${MINIO_ROOT_USER}
     MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     API_FOOTBALL_KEY: ${API_FOOTBALL_KEY}
+    # Этап 2: stage-loader ходит в Postgres DWH
+    POSTGRES_HOST: "postgres"
+    POSTGRES_INTERNAL_PORT: "5432"
+    POSTGRES_USER: ${POSTGRES_USER}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    POSTGRES_DWH_DB: ${POSTGRES_DWH_DB}
   volumes:
     - ./dags:/opt/airflow/dags
     - ./ingestion:/opt/airflow/ingestion
+    - ./stage:/opt/airflow/stage
     - ./data/airflow/logs:/opt/airflow/logs
     - ./data/airflow/plugins:/opt/airflow/plugins
   user: "${AIRFLOW_UID:-50000}:0"
@@ -67,6 +74,36 @@ services:
           memory: 1g
     networks: [football_net]
     restart: unless-stopped
+
+  # ---------- Postgres DWH: init (stage schema + tables) ----------
+  # Запускается каждый раз после старта postgres, но сами DDL идемпотентны
+  # (CREATE SCHEMA/TABLE IF NOT EXISTS). Монтируем stage/ddl в контейнер и
+  # применяем psql -f. Ошибки падают сразу (ON_ERROR_STOP=1).
+  dwh-init:
+    image: postgres:16.4
+    container_name: football_dwh_init
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DWH_DB}
+    volumes:
+      - ./stage/ddl:/ddl:ro
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        set -e
+        for f in /ddl/*.sql; do
+          echo "applying $$f"
+          psql -v ON_ERROR_STOP=1 -f "$$f"
+        done
+    restart: "no"
+    networks: [football_net]
 
   # ---------- MinIO (raw lake) ----------
   minio:
