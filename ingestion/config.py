@@ -17,6 +17,17 @@ MINIO_SECURE = os.getenv("MINIO_SECURE", "false").lower() == "true"
 RAW_API_FOOTBALL_BUCKET = "raw-api-football"
 RAW_STATSBOMB_BUCKET = "raw-statsbomb"
 
+# ---------- Postgres DWH (stage + raw vault + business vault) ----------
+# Внутри docker-сети ходим на сервис `postgres:5432`. Для stage-слоя
+# используется отдельная БД, указанная в POSTGRES_DWH_DB.
+POSTGRES_HOST = os.getenv("POSTGRES_HOST", "postgres")
+POSTGRES_PORT = int(os.getenv("POSTGRES_INTERNAL_PORT", "5432"))
+POSTGRES_USER = os.getenv("POSTGRES_USER", "football")
+POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "football")
+POSTGRES_DWH_DB = os.getenv("POSTGRES_DWH_DB", "dwh")
+
+STAGE_SCHEMA = "stage"
+
 # ---------- API-Football ----------
 API_FOOTBALL_BASE_URL = "https://v3.football.api-sports.io"
 API_FOOTBALL_KEY = os.getenv("API_FOOTBALL_KEY", "")

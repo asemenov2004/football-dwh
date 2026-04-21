@@ -7,3 +7,9 @@
 # requests не фиксируем: Airflow 2.9.3 тянет свою версию через constraints
 statsbombpy==1.17.0
 minio==7.2.20
+
+# Этап 2 — stage в Postgres
+# SQLAlchemy и psycopg2 уже тянет Airflow, но закрепим версии ingestion-стороны
+# явно, чтобы не сломаться при апгрейде Airflow.
+SQLAlchemy==1.4.54
+psycopg2-binary==2.9.9
