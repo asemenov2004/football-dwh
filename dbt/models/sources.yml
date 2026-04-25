@@ -1,0 +1,21 @@
+version: 2
+
+sources:
+  - name: stage
+    schema: stage
+    description: "Плоские stage-таблицы из MinIO (raw lake) в Postgres"
+    tables:
+      - name: af_leagues
+        description: "Лиги API-Football — один snapshot в день"
+      - name: af_teams
+        description: "Команды API-Football по лиге/сезону"
+      - name: af_fixtures
+        description: "Матчи (fixtures) API-Football"
+      - name: af_standings
+        description: "Турнирные таблицы API-Football"
+      - name: af_topscorers
+        description: "Бомбардиры API-Football"
+      - name: sb_competitions
+        description: "Турниры StatsBomb Open Data"
+      - name: sb_matches
+        description: "Матчи StatsBomb Open Data"

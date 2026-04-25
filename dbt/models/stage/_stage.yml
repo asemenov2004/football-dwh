@@ -1,0 +1,20 @@
+version: 2
+
+models:
+  - name: stg_af_leagues
+    description: "DV-stage для hub_competition и hub_season из API-Football (по лигам)"
+
+  - name: stg_af_teams
+    description: "DV-stage для hub_team, lnk_team_competition_season, sat_team_details из API-Football"
+
+  - name: stg_af_fixtures
+    description: "DV-stage для hub_match и sat_match_score из API-Football"
+
+  - name: stg_af_fixtures_teams
+    description: "DV-stage для lnk_match_team — разворот home/away из AF fixtures"
+
+  - name: stg_sb_competitions
+    description: "DV-stage для hub_competition из StatsBomb (slug-маппинг через CASE)"
+
+  - name: stg_sb_matches
+    description: "DV-stage для hub_match и sat_match_score из StatsBomb"

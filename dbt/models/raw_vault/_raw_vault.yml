@@ -1,0 +1,187 @@
+version: 2
+
+models:
+
+  # ─── HUBS ────────────────────────────────────────────────────────────────────
+
+  - name: hub_team
+    description: "Hub: уникальные команды. BK = team_bk ('af|{team_id}'). Только AF."
+    columns:
+      - name: hub_team_hk
+        description: "MD5-хеш бизнес-ключа команды (PK)"
+        tests:
+          - not_null
+          - unique
+      - name: team_bk
+        tests:
+          - not_null
+      - name: ldts
+        tests:
+          - not_null
+      - name: rsrc
+        tests:
+          - not_null
+
+  - name: hub_competition
+    description: "Hub: уникальные турниры. BK = league_id slug. Общий для AF и SB."
+    columns:
+      - name: hub_competition_hk
+        description: "MD5-хеш league_id slug (PK)"
+        tests:
+          - not_null
+          - unique
+      - name: league_id
+        tests:
+          - not_null
+      - name: ldts
+        tests:
+          - not_null
+      - name: rsrc
+        tests:
+          - not_null
+
+  - name: hub_season
+    description: "Hub: уникальные сезоны. BK = season_year (год). Только из AF."
+    columns:
+      - name: hub_season_hk
+        description: "MD5-хеш года сезона (PK)"
+        tests:
+          - not_null
+          - unique
+      - name: season_year
+        tests:
+          - not_null
+      - name: ldts
+        tests:
+          - not_null
+      - name: rsrc
+        tests:
+          - not_null
+
+  - name: hub_match
+    description: "Hub: уникальные матчи. BK = match_bk ('af|{fixture_id}' или 'sb|{match_id}'). AF и SB — разные записи."
+    columns:
+      - name: hub_match_hk
+        description: "MD5-хеш бизнес-ключа матча (PK)"
+        tests:
+          - not_null
+          - unique
+      - name: match_bk
+        tests:
+          - not_null
+      - name: ldts
+        tests:
+          - not_null
+      - name: rsrc
+        tests:
+          - not_null
+
+  # ─── LINKS ───────────────────────────────────────────────────────────────────
+
+  - name: lnk_match_team
+    description: "Link: матч ↔ команда с ролью (home/away). Только AF."
+    columns:
+      - name: lnk_match_team_hk
+        description: "MD5-хеш (hub_match_hk || hub_team_hk || team_role) (PK)"
+        tests:
+          - not_null
+          - unique
+      - name: hub_match_hk
+        tests:
+          - not_null
+          - relationships:
+              to: ref('hub_match')
+              field: hub_match_hk
+      - name: hub_team_hk
+        tests:
+          - not_null
+          - relationships:
+              to: ref('hub_team')
+              field: hub_team_hk
+      - name: team_role
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["home", "away"]
+      - name: ldts
+        tests:
+          - not_null
+      - name: rsrc
+        tests:
+          - not_null
+
+  - name: lnk_team_competition_season
+    description: "Link: команда ↔ турнир ↔ сезон. Показывает участие в соревновании."
+    columns:
+      - name: lnk_team_comp_season_hk
+        description: "MD5-хеш (hub_team_hk || hub_competition_hk || hub_season_hk) (PK)"
+        tests:
+          - not_null
+          - unique
+      - name: hub_team_hk
+        tests:
+          - not_null
+          - relationships:
+              to: ref('hub_team')
+              field: hub_team_hk
+      - name: hub_competition_hk
+        tests:
+          - not_null
+          - relationships:
+              to: ref('hub_competition')
+              field: hub_competition_hk
+      - name: hub_season_hk
+        tests:
+          - not_null
+          - relationships:
+              to: ref('hub_season')
+              field: hub_season_hk
+      - name: ldts
+        tests:
+          - not_null
+      - name: rsrc
+        tests:
+          - not_null
+
+  # ─── SATELLITES ──────────────────────────────────────────────────────────────
+
+  - name: sat_team_details
+    description: "Satellite: описательные атрибуты команды (название, страна, стадион). Append-only с hashdiff."
+    columns:
+      - name: hub_team_hk
+        tests:
+          - not_null
+          - relationships:
+              to: ref('hub_team')
+              field: hub_team_hk
+      - name: sat_team_details_hashdiff
+        tests:
+          - not_null
+      - name: team_name
+        tests:
+          - not_null
+      - name: ldts
+        tests:
+          - not_null
+      - name: rsrc
+        tests:
+          - not_null
+
+  - name: sat_match_score
+    description: "Satellite: счёт и статус матча из AF и SB. Append-only с hashdiff."
+    columns:
+      - name: hub_match_hk
+        tests:
+          - not_null
+          - relationships:
+              to: ref('hub_match')
+              field: hub_match_hk
+      - name: sat_match_score_hashdiff
+        tests:
+          - not_null
+      - name: ldts
+        tests:
+          - not_null
+      - name: rsrc
+        tests:
+          - not_null
