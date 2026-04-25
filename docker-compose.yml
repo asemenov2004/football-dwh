@@ -35,10 +35,14 @@ x-airflow-common: &airflow-common
     POSTGRES_USER: ${POSTGRES_USER}
     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     POSTGRES_DWH_DB: ${POSTGRES_DWH_DB}
+    # Этап 3: dbt — профили и таргет
+    DBT_PROFILES_DIR: "/opt/airflow/dbt"
+    DBT_TARGET: "prod"
   volumes:
     - ./dags:/opt/airflow/dags
     - ./ingestion:/opt/airflow/ingestion
     - ./stage:/opt/airflow/stage
+    - ./dbt:/opt/airflow/dbt
     - ./data/airflow/logs:/opt/airflow/logs
     - ./data/airflow/plugins:/opt/airflow/plugins
   user: "${AIRFLOW_UID:-50000}:0"

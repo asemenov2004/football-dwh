@@ -1,0 +1,43 @@
+name: football_dwh
+version: "1.0.0"
+config-version: 2
+
+profile: football_dwh
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  football_dwh:
+    stage:
+      +materialized: view
+      +schema: stage_dv
+    raw_vault:
+      +schema: raw_vault
+      hubs:
+        +materialized: incremental
+        +incremental_strategy: append
+      links:
+        +materialized: incremental
+        +incremental_strategy: append
+      satellites:
+        +materialized: incremental
+        +incremental_strategy: append
+
+vars:
+  datavault4dbt:
+    hash: "MD5"
+    hash_datatype: "varchar(32)"
+    ghost_record_type: "standard"
+    beginning_of_all_times: "1970-01-01 00:00:00.000000"
+    end_of_all_times: "9999-12-31 23:59:59.000000"
+    timestamp_format: "YYYY-MM-DD HH24:MI:SS.US"

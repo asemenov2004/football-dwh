@@ -1,0 +1,12 @@
+football_dwh:
+  target: "{{ env_var('DBT_TARGET', 'prod') }}"
+  outputs:
+    prod:
+      type: postgres
+      host: "{{ env_var('POSTGRES_HOST', 'postgres') }}"
+      port: "{{ env_var('POSTGRES_INTERNAL_PORT', '5432') | int }}"
+      user: "{{ env_var('POSTGRES_USER', 'football') }}"
+      password: "{{ env_var('POSTGRES_PASSWORD', 'football') }}"
+      dbname: "{{ env_var('POSTGRES_DWH_DB', 'dwh') }}"
+      schema: public
+      threads: 4
