@@ -75,14 +75,36 @@ data/          — bind-mounts (gitignored): postgres, minio, clickhouse, лог
 Реализуется поэтапно, после каждого — git-коммит:
 
 0. ✅ Скелет (Docker Compose, структура)
-1. ⏳ Extract (API-Football + StatsBomb → MinIO)
-2. Stage в Postgres
-3. Raw Vault (dbt + datavault4dbt)
-4. Business Vault (PIT, bridge, computed sats)
+1. ✅ Extract (API-Football + StatsBomb → MinIO)
+2. ✅ Stage в Postgres (7 таблиц: `af_fixtures/teams/leagues/standings/topscorers`, `sb_matches/competitions`)
+3. ✅ Raw Vault — dbt + datavault4dbt (hubs/links/satellites для команд, матчей, лиг, сезонов, игроков)
+4. Business Vault (PIT, bridge, same-as-link AF↔SB)
 5. Data Marts в ClickHouse
 6. Superset дашборды
 7. Spark (расчёт Elo)
 8. CI + DQ + документация
+
+### Raw Vault (Этап 3 + 3.5)
+
+Схема `public_raw_vault` в Postgres. Генерация через макросы `datavault4dbt` (ScalefreeCOM v1.17.0).
+
+| Объект | Строк | Описание |
+|---|---|---|
+| `hub_team` | 157 | Команды AF (`af\|{team_id}`) |
+| `hub_match` | 4 495 | Матчи AF + SB (`af\|{fixture_id}`, `sb\|{match_id}`) |
+| `hub_competition` | 6 | Турниры AF+SB (общий, BK = slug) |
+| `hub_season` | 1 | Сезоны (общий, BK = год) |
+| `hub_player` | 103 | Игроки AF (`af\|{player_id}`) |
+| `lnk_match_team` | 4 070 | Матч ↔ команда + роль home/away |
+| `lnk_team_competition_season` | 179 | Команда ↔ лига ↔ сезон |
+| `lnk_player_team` | 104 | Игрок ↔ команда |
+| `sat_team_details` | 157 | Атрибуты команды (название, страна, стадион) |
+| `sat_match_score` | 4 495 | Счёт + статус матча (AF + SB) |
+| `sat_player_details` | 103 | Атрибуты игрока (имя, национальность, фото) |
+| `sat_standing` | 132 | Снапшоты турнирных таблиц |
+| `sat_topscorer` | 114 | Статистика бомбардиров |
+
+DV-stage views (`public_stage_dv`) читают `stage.*` и вычисляют MD5-хеши на лету — физически данных не хранят.
 
 Подробный план — в `docs/plan.md` (будет добавлен).
 

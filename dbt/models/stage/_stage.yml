@@ -18,3 +18,9 @@ models:
 
   - name: stg_sb_matches
     description: "DV-stage для hub_match и sat_match_score из StatsBomb"
+
+  - name: stg_af_standings
+    description: "DV-stage для sat_standing из API-Football (снапшоты турнирных таблиц)"
+
+  - name: stg_af_topscorers
+    description: "DV-stage для hub_player, sat_player_details, sat_topscorer, lnk_player_team из API-Football"
