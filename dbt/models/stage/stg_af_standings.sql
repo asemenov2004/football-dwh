@@ -60,9 +60,8 @@ SELECT
     form,
     standing_description,
 
-    -- Hashdiff: включаем dt, чтобы каждый новый снапшот = новая строка
+    -- Hashdiff: только данные — новая строка когда реально что-то изменилось
     md5(
-        COALESCE(cast(dt AS text), '^^')             || '||' ||
         COALESCE(cast(standing_rank AS text), '^^')  || '||' ||
         COALESCE(cast(points AS text), '^^')         || '||' ||
         COALESCE(cast(played AS text), '^^')         || '||' ||

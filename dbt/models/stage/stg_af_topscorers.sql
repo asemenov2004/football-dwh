@@ -72,9 +72,8 @@ SELECT
         COALESCE(photo_url, '^^')
     )                                                                       AS sat_player_details_hashdiff,
 
-    -- Hashdiff для sat_topscorer (включаем dt — каждый снапшот = новая запись)
+    -- Hashdiff для sat_topscorer: только данные
     md5(
-        COALESCE(cast(dt AS text), '^^')           || '||' ||
         COALESCE(cast(goals AS text), '^^')        || '||' ||
         COALESCE(cast(assists AS text), '^^')      || '||' ||
         COALESCE(cast(appearances AS text), '^^')  || '||' ||
