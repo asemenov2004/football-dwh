@@ -19,7 +19,7 @@ from typing import Any, Callable
 from sqlalchemy import text
 
 from ingestion import config
-from ingestion.minio_reader import get_json
+from ingestion.minio_reader import get_json, list_objects
 from ingestion.minio_writer import build_object_key
 from stage.postgres import get_engine
 
@@ -294,3 +294,66 @@ def load_topscorers(dt: date, season: int) -> int:
         insert_sql=_TOPSCORERS_INSERT,
         row_builder=_row_topscorers,
     )
+
+
+# ---------- players ----------
+
+_PLAYERS_UPSERT = """
+INSERT INTO stage.af_players
+    (player_id, league_id, season, dt, source_file, raw_payload)
+VALUES
+    (:player_id, :league_id, :season, :dt, :source_file,
+     CAST(:raw_payload AS JSONB))
+ON CONFLICT (player_id, league_id, season) DO UPDATE
+    SET dt          = EXCLUDED.dt,
+        source_file = EXCLUDED.source_file,
+        raw_payload = EXCLUDED.raw_payload,
+        loaded_at   = now()
+"""
+
+
+def load_players(dt: date, season: int) -> int:
+    """UPSERT ростеров игроков из MinIO → stage.af_players.
+
+    Читает все page-*.json файлы за указанный dt и season.
+    Стратегия UPSERT (не TRUNCATE) — данные разных сезонов накапливаются.
+    """
+    rows: list[dict[str, Any]] = []
+    for league in config.LEAGUES:
+        slug = league["name"]
+        prefix = (
+            f"source=api-football/endpoint=players/"
+            f"league_id={slug}/season={season}/"
+            f"dt={_dt_str(dt)}/"
+        )
+        for key in list_objects(config.RAW_API_FOOTBALL_BUCKET, prefix):
+            if not key.endswith(".json"):
+                continue
+            payload = get_json(config.RAW_API_FOOTBALL_BUCKET, key)
+            if not payload:
+                continue
+            for item in (payload.get("response") or []):
+                player = item.get("player") or {}
+                player_id = player.get("id")
+                if player_id is None:
+                    log.warning(
+                        "af/players: нет player.id в %s — skip", key
+                    )
+                    continue
+                rows.append({
+                    "player_id": player_id,
+                    "league_id": slug,
+                    "season": season,
+                    "dt": dt,
+                    "source_file": key,
+                    "raw_payload": json.dumps(
+                        item, ensure_ascii=False
+                    ),
+                })
+
+    engine = get_engine()
+    with engine.begin() as conn:
+        if rows:
+            conn.execute(text(_PLAYERS_UPSERT), rows)
+    log.info("stage.af_players: upserted %d строк", len(rows))
+    return len(rows)

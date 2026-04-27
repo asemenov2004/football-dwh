@@ -24,3 +24,6 @@ models:
 
   - name: stg_af_topscorers
     description: "DV-stage для hub_player, sat_player_details, sat_topscorer, lnk_player_team из API-Football"
+
+  - name: stg_af_players
+    description: "DV-stage для hub_player и sat_player_profile из AF /players (полный профиль: рождение, рост, вес, позиция)"

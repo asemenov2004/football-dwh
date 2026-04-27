@@ -15,6 +15,8 @@ sources:
         description: "Турнирные таблицы API-Football"
       - name: af_topscorers
         description: "Бомбардиры API-Football"
+      - name: af_players
+        description: "Ростеры игроков AF /players — полный профиль (рождение, рост, вес, позиция)"
       - name: sb_competitions
         description: "Турниры StatsBomb Open Data"
       - name: sb_matches

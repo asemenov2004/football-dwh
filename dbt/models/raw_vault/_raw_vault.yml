@@ -189,7 +189,7 @@ models:
   # ─── ЭТАП 3.5 ────────────────────────────────────────────────────────────────
 
   - name: hub_player
-    description: "Hub: уникальные игроки. BK = player_bk ('af|{player_id}'). Только AF."
+    description: "Hub: уникальные игроки. BK = player_bk ('af|{player_id}'). Источники: af_topscorers + af_players."
     columns:
       - name: hub_player_hk
         description: "MD5-хеш бизнес-ключа игрока (PK)"
@@ -226,6 +226,28 @@ models:
           - relationships:
               to: ref('hub_team')
               field: hub_team_hk
+      - name: ldts
+        tests:
+          - not_null
+      - name: rsrc
+        tests:
+          - not_null
+
+  - name: sat_player_profile
+    description: "Satellite: расширенный профиль игрока (дата рождения, рост, вес, позиция). Источник: af_players."
+    columns:
+      - name: hub_player_hk
+        tests:
+          - not_null
+          - relationships:
+              to: ref('hub_player')
+              field: hub_player_hk
+      - name: sat_player_profile_hashdiff
+        tests:
+          - not_null
+      - name: player_name
+        tests:
+          - not_null
       - name: ldts
         tests:
           - not_null
