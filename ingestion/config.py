@@ -72,9 +72,10 @@ LEAGUES = [
     },
 ]
 
-# API-Football: free tier даёт сезоны 2022-2024. Берём 2024 (сезон 2024/25 —
-# полный, свежий). Override через env, если план обновится.
+# API-Football: free tier даёт сезоны 2021-2024.
 DEFAULT_API_FOOTBALL_SEASON = int(os.getenv("API_FOOTBALL_SEASON", "2024"))
+# Исторические сезоны для backfill (standings, topscorers, players).
+HISTORICAL_AF_SEASONS = [2022, 2023]
 
 # ---------- Пути для локального состояния ingestion ----------
 # Живёт рядом с логами Airflow, чтобы не плодить лишних томов.

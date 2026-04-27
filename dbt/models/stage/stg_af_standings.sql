@@ -41,6 +41,9 @@ SELECT
     md5(COALESCE(lower(trim(league_id)), '^^'))                    AS hub_competition_hk,
     md5(COALESCE(cast(season AS text), '^^'))                      AS hub_season_hk,
 
+    -- Business keys (нужны hub_season как multi-source)
+    season                                                         AS season_year,
+
     -- Snapshot date (payload, enters hashdiff — новая строка при смене dt)
     dt,
 

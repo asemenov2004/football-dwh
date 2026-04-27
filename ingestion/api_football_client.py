@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any
 
 import requests
@@ -38,6 +39,7 @@ class ApiFootballClient:
             except ValueError:
                 pass
 
+        time.sleep(7)  # burst limit: ~10 req/min → 7 s между запросами
         resp.raise_for_status()
         data = resp.json()
         errors = data.get("errors")
@@ -63,3 +65,11 @@ class ApiFootballClient:
 
     def get_topscorers(self, league_id: int, season: int) -> dict[str, Any]:
         return self._get("/players/topscorers", {"league": league_id, "season": season})
+
+    def get_players(
+        self, league_id: int, season: int, page: int = 1
+    ) -> dict[str, Any]:
+        return self._get(
+            "/players",
+            {"league": league_id, "season": season, "page": page},
+        )

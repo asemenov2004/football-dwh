@@ -58,6 +58,20 @@ CREATE TABLE IF NOT EXISTS stage.af_standings (
     PRIMARY KEY (league_id, season, team_id, dt)
 );
 
+-- ---------- players ----------
+-- Стратегия: UPSERT по (player_id, league_id, season). Данные исторических
+-- сезонов накапливаются — в отличие от snapshot-таблиц, stage не очищается.
+CREATE TABLE IF NOT EXISTS stage.af_players (
+    player_id     BIGINT      NOT NULL,
+    league_id     TEXT        NOT NULL,
+    season        INTEGER     NOT NULL,
+    dt            DATE        NOT NULL,
+    source_file   TEXT        NOT NULL,
+    loaded_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    raw_payload   JSONB       NOT NULL,
+    PRIMARY KEY (player_id, league_id, season)
+);
+
 -- ---------- topscorers ----------
 CREATE TABLE IF NOT EXISTS stage.af_topscorers (
     player_id     BIGINT      NOT NULL,
