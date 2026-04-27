@@ -9,5 +9,9 @@
     business_keys=['player_bk'],
     src_ldts='ldts',
     src_rsrc='rsrc',
-    source_models={'stg_af_topscorers': {}, 'stg_af_players': {}}
+    source_models={
+        'stg_af_topscorers': {},
+        'stg_af_players': {},
+        'stg_understat_players': {}
+    }
 ) }}

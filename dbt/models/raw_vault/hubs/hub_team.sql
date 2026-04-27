@@ -9,5 +9,5 @@
     business_keys=['team_bk'],
     src_ldts='ldts',
     src_rsrc='rsrc',
-    source_models='stg_af_teams'
+    source_models={'stg_af_teams': {}, 'stg_understat_teams': {}}
 ) }}

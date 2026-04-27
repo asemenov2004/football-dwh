@@ -27,3 +27,9 @@ models:
 
   - name: stg_af_players
     description: "DV-stage для hub_player и sat_player_profile из AF /players (полный профиль: рождение, рост, вес, позиция)"
+
+  - name: stg_understat_players
+    description: "DV-stage для hub_player и sat_player_xg из Understat (xG, xA, npxG, xGChain, xGBuildup)"
+
+  - name: stg_understat_teams
+    description: "DV-stage для hub_team и sat_team_xg из Understat (xG, PPDA, OPPDA, xPTS)"
