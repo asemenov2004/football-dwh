@@ -9,5 +9,10 @@
     business_keys=['season_year'],
     src_ldts='ldts',
     src_rsrc='rsrc',
-    source_models={'stg_af_leagues': {}, 'stg_af_standings': {}}
+    source_models={
+        'stg_af_leagues': {},
+        'stg_af_standings': {},
+        'stg_understat_players': {},
+        'stg_understat_teams': {}
+    }
 ) }}

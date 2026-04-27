@@ -277,6 +277,44 @@ models:
         tests:
           - not_null
 
+  - name: sat_player_xg
+    description: "Satellite: xG-статистика игрока за сезон в лиге (Understat). BK='understat|{id}'."
+    columns:
+      - name: hub_player_hk
+        tests:
+          - not_null
+          - relationships:
+              to: ref('hub_player')
+              field: hub_player_hk
+      - name: sat_player_xg_hashdiff
+        tests:
+          - not_null
+      - name: ldts
+        tests:
+          - not_null
+      - name: rsrc
+        tests:
+          - not_null
+
+  - name: sat_team_xg
+    description: "Satellite: xG/PPDA-статистика команды за сезон в лиге (Understat). BK='understat|{name}'."
+    columns:
+      - name: hub_team_hk
+        tests:
+          - not_null
+          - relationships:
+              to: ref('hub_team')
+              field: hub_team_hk
+      - name: sat_team_xg_hashdiff
+        tests:
+          - not_null
+      - name: ldts
+        tests:
+          - not_null
+      - name: rsrc
+        tests:
+          - not_null
+
   - name: sat_standing
     description: "Satellite: снапшот турнирной таблицы (место, очки, статистика). Multi-active по dt."
     columns:

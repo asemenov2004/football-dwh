@@ -77,6 +77,19 @@ DEFAULT_API_FOOTBALL_SEASON = int(os.getenv("API_FOOTBALL_SEASON", "2024"))
 # Исторические сезоны для backfill (standings, topscorers, players).
 HISTORICAL_AF_SEASONS = [2022, 2023]
 
+# ---------- Understat ----------
+RAW_UNDERSTAT_BUCKET = "raw-understat"
+DEFAULT_UNDERSTAT_SEASON = int(os.getenv("UNDERSTAT_SEASON", "2025"))
+
+# Топ-5 лиг (UCL в understat нет)
+UNDERSTAT_LEAGUES = [
+    {"name": "epl",        "understat_id": "epl"},
+    {"name": "la_liga",    "understat_id": "la_liga"},
+    {"name": "serie_a",    "understat_id": "serie_a"},
+    {"name": "bundesliga", "understat_id": "bundesliga"},
+    {"name": "ligue_1",    "understat_id": "ligue_1"},
+]
+
 # ---------- Пути для локального состояния ingestion ----------
 # Живёт рядом с логами Airflow, чтобы не плодить лишних томов.
 INGESTION_STATE_DIR = os.getenv(

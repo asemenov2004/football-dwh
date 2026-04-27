@@ -21,3 +21,7 @@ sources:
         description: "Турниры StatsBomb Open Data"
       - name: sb_matches
         description: "Матчи StatsBomb Open Data"
+      - name: understat_players
+        description: "Сезонная xG-статистика игроков (Understat)"
+      - name: understat_teams
+        description: "Сезонная xG/PPDA-статистика команд (Understat)"
