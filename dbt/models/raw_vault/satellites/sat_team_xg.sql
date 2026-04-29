@@ -11,6 +11,7 @@
         'xg_for', 'npxg_for', 'xg_against', 'npxg_against', 'npxg_diff',
         'ppda', 'oppda', 'deep_completions', 'opp_deep_completions',
         'xpts', 'matches', 'wins', 'draws', 'losses', 'points',
+        'goals_for', 'goals_against',
         'league_id', 'season_year'
     ],
     src_ldts='ldts',

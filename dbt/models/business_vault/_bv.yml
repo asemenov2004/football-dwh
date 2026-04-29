@@ -1,0 +1,88 @@
+version: 2
+
+models:
+  - name: pit_team_season
+    description: "PIT-снапшот команды на конец сезона: latest sat_team_xg + sat_team_details на (team, comp, season)."
+    columns:
+      - name: pit_team_season_hk
+        tests: [not_null, unique]
+      - name: hub_team_hk
+        tests:
+          - not_null
+          - relationships:
+              to: ref('hub_team')
+              field: hub_team_hk
+      - name: hub_competition_hk
+        tests:
+          - not_null
+          - relationships:
+              to: ref('hub_competition')
+              field: hub_competition_hk
+      - name: hub_season_hk
+        tests:
+          - not_null
+          - relationships:
+              to: ref('hub_season')
+              field: hub_season_hk
+      - name: league_id
+        tests: [not_null]
+      - name: season_year
+        tests: [not_null]
+
+  - name: pit_player_season
+    description: "PIT-снапшот игрока на конец сезона: latest sat_player_xg на (player, comp, season)."
+    columns:
+      - name: pit_player_season_hk
+        tests: [not_null, unique]
+      - name: hub_player_hk
+        tests:
+          - not_null
+          - relationships:
+              to: ref('hub_player')
+              field: hub_player_hk
+      - name: hub_competition_hk
+        tests:
+          - not_null
+          - relationships:
+              to: ref('hub_competition')
+              field: hub_competition_hk
+      - name: hub_season_hk
+        tests:
+          - not_null
+          - relationships:
+              to: ref('hub_season')
+              field: hub_season_hk
+
+  - name: br_player_team_season
+    description: "Bridge player×team×competition×season (учитывает мид-сезонные трансферы)."
+    columns:
+      - name: br_hk
+        tests: [not_null]
+      - name: hub_player_hk
+        tests:
+          - not_null
+          - relationships: { to: ref('hub_player'), field: hub_player_hk }
+      - name: hub_team_hk
+        tests:
+          - not_null
+          - relationships: { to: ref('hub_team'), field: hub_team_hk }
+      - name: hub_competition_hk
+        tests:
+          - not_null
+          - relationships: { to: ref('hub_competition'), field: hub_competition_hk }
+      - name: hub_season_hk
+        tests:
+          - not_null
+          - relationships: { to: ref('hub_season'), field: hub_season_hk }
+
+  - name: br_team_competition_season
+    description: "Bridge team×competition×season (плоская копия PIT для прямого маршрута в марты)."
+    columns:
+      - name: br_hk
+        tests: [not_null, unique]
+      - name: hub_team_hk
+        tests: [not_null]
+      - name: hub_competition_hk
+        tests: [not_null]
+      - name: hub_season_hk
+        tests: [not_null]
