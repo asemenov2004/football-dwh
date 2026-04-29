@@ -14,7 +14,6 @@ MINIO_ACCESS_KEY = os.getenv("MINIO_ROOT_USER", "minioadmin")
 MINIO_SECRET_KEY = os.getenv("MINIO_ROOT_PASSWORD", "minioadmin123")
 MINIO_SECURE = os.getenv("MINIO_SECURE", "false").lower() == "true"
 
-RAW_API_FOOTBALL_BUCKET = "raw-api-football"
 RAW_STATSBOMB_BUCKET = "raw-statsbomb"
 
 # ---------- Postgres DWH (stage + raw vault + business vault) ----------
@@ -28,54 +27,19 @@ POSTGRES_DWH_DB = os.getenv("POSTGRES_DWH_DB", "dwh")
 
 STAGE_SCHEMA = "stage"
 
-# ---------- API-Football ----------
-API_FOOTBALL_BASE_URL = "https://v3.football.api-sports.io"
-API_FOOTBALL_KEY = os.getenv("API_FOOTBALL_KEY", "")
-API_FOOTBALL_DAILY_LIMIT = 100
-
 # ---------- Этап 1: топ-5 лиг Европы + UCL ----------
-# name            — slug для task_id и ключа S3 (league_id=<name>)
-# api_football_id — ID лиги в API-Football
-# statsbomb       — (country_name, competition_name) для фильтрации
-#                   competitions() в StatsBomb Open Data; competition_id
-#                   резолвится динамически, т.к. покрытие неравномерное
+# name      — slug для task_id и ключа S3 (league_id=<name>)
+# statsbomb — (country_name, competition_name) для фильтрации
+#             competitions() в StatsBomb Open Data; competition_id
+#             резолвится динамически, т.к. покрытие неравномерное
 LEAGUES = [
-    {
-        "name": "epl",
-        "api_football_id": 39,
-        "statsbomb": ("England", "Premier League"),
-    },
-    {
-        "name": "la_liga",
-        "api_football_id": 140,
-        "statsbomb": ("Spain", "La Liga"),
-    },
-    {
-        "name": "serie_a",
-        "api_football_id": 135,
-        "statsbomb": ("Italy", "Serie A"),
-    },
-    {
-        "name": "bundesliga",
-        "api_football_id": 78,
-        "statsbomb": ("Germany", "1. Bundesliga"),
-    },
-    {
-        "name": "ligue_1",
-        "api_football_id": 61,
-        "statsbomb": ("France", "Ligue 1"),
-    },
-    {
-        "name": "ucl",
-        "api_football_id": 2,
-        "statsbomb": ("Europe", "Champions League"),
-    },
+    {"name": "epl",        "statsbomb": ("England", "Premier League")},
+    {"name": "la_liga",    "statsbomb": ("Spain", "La Liga")},
+    {"name": "serie_a",    "statsbomb": ("Italy", "Serie A")},
+    {"name": "bundesliga", "statsbomb": ("Germany", "1. Bundesliga")},
+    {"name": "ligue_1",    "statsbomb": ("France", "Ligue 1")},
+    {"name": "ucl",        "statsbomb": ("Europe", "Champions League")},
 ]
-
-# API-Football: free tier даёт сезоны 2021-2024.
-DEFAULT_API_FOOTBALL_SEASON = int(os.getenv("API_FOOTBALL_SEASON", "2024"))
-# Исторические сезоны для backfill (standings, topscorers, players).
-HISTORICAL_AF_SEASONS = [2022, 2023]
 
 # ---------- Understat ----------
 RAW_UNDERSTAT_BUCKET = "raw-understat"
@@ -94,7 +58,4 @@ UNDERSTAT_LEAGUES = [
 # Живёт рядом с логами Airflow, чтобы не плодить лишних томов.
 INGESTION_STATE_DIR = os.getenv(
     "INGESTION_STATE_DIR", "/opt/airflow/logs/ingestion_state"
-)
-API_FOOTBALL_USAGE_FILE = os.path.join(
-    INGESTION_STATE_DIR, "api_football_usage.json"
 )

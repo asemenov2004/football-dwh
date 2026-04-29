@@ -45,3 +45,17 @@ def get_league_table(league: str, season: int) -> list[dict[str, Any]]:
     rows = [dict(zip(headers, row)) for row in raw[1:]]
     log.info("understat/%s/%d: %d команд", league, season, len(rows))
     return rows
+
+
+def get_league_results(league: str, season: int) -> list[dict[str, Any]]:
+    """Завершённые матчи лиги с xG на уровне матча (home_xg, away_xg).
+
+    Возвращает только isResult=True. Каждая запись содержит:
+    id, h/a (команды), goals.h/a, xG.h/a, datetime.
+    """
+    async def _call(client, league, season):
+        return await client.get_league_results(league, season)
+    raw = asyncio.run(_fetch(_call, league, season))
+    results = [m for m in raw if m.get("isResult")]
+    log.info("understat/%s/%d: %d матчей", league, season, len(results))
+    return results

@@ -1,8 +1,7 @@
 -- Link: матч ↔ команда с ролью (home/away).
 -- Пишем как plain SQL, а не через datavault4dbt.link(), потому что
 -- нам нужно сохранить team_role — атрибут роли, которого нет в стандартном линке.
--- Источник: stg_af_fixtures_teams (разворот home+away из AF fixtures).
--- SB пока не льётся — home_team_id/away_team_id в stage.sb_matches NULL.
+-- Источник: stg_understat_matches_teams (разворот home+away из Understat matches).
 
 {{ config(materialized='incremental', unique_key='lnk_match_team_hk') }}
 
@@ -14,7 +13,7 @@ WITH incoming AS (
         team_role,
         ldts,
         rsrc
-    FROM {{ ref('stg_af_fixtures_teams') }}
+    FROM {{ ref('stg_understat_matches_teams') }}
 )
 
 SELECT * FROM incoming

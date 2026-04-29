@@ -28,7 +28,6 @@ x-airflow-common: &airflow-common
     MINIO_ENDPOINT: "minio:9000"
     MINIO_ROOT_USER: ${MINIO_ROOT_USER}
     MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-    API_FOOTBALL_KEY: ${API_FOOTBALL_KEY}
     # Этап 2: stage-loader ходит в Postgres DWH
     POSTGRES_HOST: "postgres"
     POSTGRES_INTERNAL_PORT: "5432"
@@ -152,8 +151,8 @@ services:
       - |
         set -e
         mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
-        mc mb --ignore-existing local/raw-api-football
         mc mb --ignore-existing local/raw-statsbomb
+        mc mb --ignore-existing local/raw-understat
         mc ls local/
     restart: "no"
     networks: [football_net]

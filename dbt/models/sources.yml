@@ -5,18 +5,6 @@ sources:
     schema: stage
     description: "Плоские stage-таблицы из MinIO (raw lake) в Postgres"
     tables:
-      - name: af_leagues
-        description: "Лиги API-Football — один snapshot в день"
-      - name: af_teams
-        description: "Команды API-Football по лиге/сезону"
-      - name: af_fixtures
-        description: "Матчи (fixtures) API-Football"
-      - name: af_standings
-        description: "Турнирные таблицы API-Football"
-      - name: af_topscorers
-        description: "Бомбардиры API-Football"
-      - name: af_players
-        description: "Ростеры игроков AF /players — полный профиль (рождение, рост, вес, позиция)"
       - name: sb_competitions
         description: "Турниры StatsBomb Open Data"
       - name: sb_matches
@@ -25,3 +13,5 @@ sources:
         description: "Сезонная xG-статистика игроков (Understat)"
       - name: understat_teams
         description: "Сезонная xG/PPDA-статистика команд (Understat)"
+      - name: understat_matches
+        description: "Завершённые матчи с xG на уровне матча (Understat)"

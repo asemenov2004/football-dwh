@@ -1,6 +1,6 @@
 # Football DWH
 
-Учебный DWH по футбольной статистике (топ-5 европейских лиг + UCL). Курсовая 2026, задел на диплом.
+Учебный DWH по футбольной статистике (топ-5 европейских лиг). Курсовая 2026, задел на диплом.
 
 ## Стек
 
@@ -61,9 +61,10 @@ swap=4GB
 ## Структура
 
 ```
-dags/          — Airflow DAG'и (добавляются поэтапно)
+dags/          — Airflow DAG'и (Understat daily/historical, SB)
 dbt/           — dbt-проект (stage / raw_vault / business_vault / marts)
-ingestion/     — Python-клиенты к API-Football и StatsBomb
+ingestion/     — Python-клиенты Understat и StatsBomb
+stage/         — DDL и loader'ы MinIO → Postgres.stage
 spark/         — Spark-джобы (Elo-рейтинг)
 docker/        — Dockerfile'ы и init-скрипты
 docs/          — диаграммы, скриншоты, материалы для отчёта курсовой
@@ -75,40 +76,43 @@ data/          — bind-mounts (gitignored): postgres, minio, clickhouse, лог
 Реализуется поэтапно, после каждого — git-коммит:
 
 0. ✅ Скелет (Docker Compose, структура)
-1. ✅ Extract (API-Football + StatsBomb → MinIO)
-2. ✅ Stage в Postgres (7 таблиц: `af_fixtures/teams/leagues/standings/topscorers`, `sb_matches/competitions`)
-3. ✅ Raw Vault — dbt + datavault4dbt (hubs/links/satellites для команд, матчей, лиг, сезонов, игроков)
-4. Business Vault (PIT, bridge, same-as-link AF↔SB)
-5. Data Marts в ClickHouse
-6. Superset дашборды
+1. ✅ Extract (Understat + StatsBomb → MinIO)
+2. ✅ Stage в Postgres (5 таблиц: `understat_matches/teams/players`, `sb_matches/competitions`)
+3. ✅ Raw Vault — dbt + datavault4dbt (hubs/links/satellites)
+4. ✅ Расширение RV: xG-стек Understat (matches/teams/players), bridge SB↔Understat, lnk_player_team с учётом мид-сезонных трансферов
+5. Business Vault (PIT/bridge: команда-сезон, игрок-сезон, матч)
+6. Data Marts в ClickHouse + Superset
 7. Spark (расчёт Elo)
 8. CI + DQ + документация
 
-### Raw Vault (Этап 3 + 3.5)
+### Источники данных (Этап 4)
 
-Схема `public_raw_vault` в Postgres. Генерация через макросы `datavault4dbt` (ScalefreeCOM v1.17.0).
+В рамках работы над xG-частью отказались от **API-Football** (free tier 100 req/день, нет xG). Остались два источника:
+
+- **Understat** ([understat.com](https://understat.com)) — xG/xA/PPDA/xPTS на уровне матча, команды и игрока. Топ-5 лиг, сезоны 2022–2025, без лимитов (HTML-парсинг).
+- **StatsBomb Open Data** ([github.com/statsbomb/open-data](https://github.com/statsbomb/open-data)) — исторические матчи (преимущественно 2015 и старее). Используется для счёта/статуса как изолированная ветка; bridge с Understat — `lnk_match_same_as` (24 пары на пересечениях).
+
+### Raw Vault (на конец Этапа 4)
+
+Схема `public_raw_vault` в Postgres. Генерация через макросы `datavault4dbt` (ScalefreeCOM v1.17.0). Hash = MD5.
 
 | Объект | Строк | Описание |
 |---|---|---|
-| `hub_team` | 157 | Команды AF (`af\|{team_id}`) |
-| `hub_match` | 4 495 | Матчи AF + SB (`af\|{fixture_id}`, `sb\|{match_id}`) |
-| `hub_competition` | 6 | Турниры AF+SB (общий, BK = slug) |
-| `hub_season` | 1 | Сезоны (общий, BK = год) |
-| `hub_player` | 103 | Игроки AF (`af\|{player_id}`) |
-| `lnk_match_team` | 4 070 | Матч ↔ команда + роль home/away |
-| `lnk_team_competition_season` | 179 | Команда ↔ лига ↔ сезон |
-| `lnk_player_team` | 104 | Игрок ↔ команда |
-| `sat_team_details` | 157 | Атрибуты команды (название, страна, стадион) |
-| `sat_match_score` | 4 495 | Счёт + статус матча (AF + SB) |
-| `sat_player_details` | 103 | Атрибуты игрока (имя, национальность, фото) |
-| `sat_standing` | 132 | Снапшоты турнирных таблиц |
-| `sat_topscorer` | 114 | Статистика бомбардиров |
+| `hub_team` | 125 | Команды Understat (`understat\|{lower(team_title)}`) |
+| `hub_match` | 9 355 | Матчи Understat + SB (`understat\|{id}`, `sb\|{id}`) |
+| `hub_competition` | 6 | Турниры (общий BK = league slug) |
+| `hub_season` | 4 | Сезоны 2022–2025 |
+| `hub_player` | 4 982 | Игроки Understat (`understat\|{id}`) |
+| `lnk_match_team` | 13 790 | Матч ↔ команда + роль home/away |
+| `lnk_team_competition_season` | 386 | Команда ↔ лига ↔ сезон |
+| `lnk_player_team` | 11 360 | Игрок ↔ команда ↔ сезон (с мид-сезонными трансферами) |
+| `lnk_match_competition_season` | 6 895 | Матч ↔ лига ↔ сезон |
+| `lnk_match_same_as` | 24 | Bridge SB ↔ Understat по (date, league, normalized teams) |
+| `sat_team_details` | 125 | Название команды + лига |
+| `sat_team_xg` | 386 | xG/NPxG/PPDA/OPPDA/xPTS/PTS на сезон |
+| `sat_match_score` | 2 460 | SB: счёт + статус матча |
+| `sat_match_score_understat` | 6 895 | Understat: счёт + datetime |
+| `sat_match_xg` | 6 895 | Understat: home_xg / away_xg |
+| `sat_player_xg` | 11 054 | xG/xA/npxG/goals/assists/minutes на сезон |
 
 DV-stage views (`public_stage_dv`) читают `stage.*` и вычисляют MD5-хеши на лету — физически данных не хранят.
-
-Подробный план — в `docs/plan.md` (будет добавлен).
-
-## Источники данных
-
-- **StatsBomb Open Data** — исторические данные, без лимитов ([github.com/statsbomb/open-data](https://github.com/statsbomb/open-data))
-- **API-Football free tier** — текущий сезон, 100 req/день ([api-football.com](https://www.api-football.com))

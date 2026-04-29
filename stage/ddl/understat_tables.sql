@@ -24,3 +24,14 @@ CREATE TABLE IF NOT EXISTS stage.understat_teams (
     raw_payload JSONB       NOT NULL,
     PRIMARY KEY (team_title, league_id, season)
 );
+
+-- ---------- matches ----------
+CREATE TABLE IF NOT EXISTS stage.understat_matches (
+    match_id    TEXT        NOT NULL,
+    league_id   TEXT        NOT NULL,
+    season      INTEGER     NOT NULL,
+    dt          DATE        NOT NULL,
+    loaded_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    raw_payload JSONB       NOT NULL,
+    PRIMARY KEY (match_id)
+);

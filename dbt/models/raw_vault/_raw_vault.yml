@@ -5,7 +5,7 @@ models:
   # ─── HUBS ────────────────────────────────────────────────────────────────────
 
   - name: hub_team
-    description: "Hub: уникальные команды. BK = team_bk ('af|{team_id}'). Только AF."
+    description: "Hub: уникальные команды. BK = team_bk ('understat|{lower(team_title)}')."
     columns:
       - name: hub_team_hk
         description: "MD5-хеш бизнес-ключа команды (PK)"
@@ -23,7 +23,7 @@ models:
           - not_null
 
   - name: hub_competition
-    description: "Hub: уникальные турниры. BK = league_id slug. Общий для AF и SB."
+    description: "Hub: уникальные турниры. BK = league_id slug. Источники: SB + Understat."
     columns:
       - name: hub_competition_hk
         description: "MD5-хеш league_id slug (PK)"
@@ -41,7 +41,7 @@ models:
           - not_null
 
   - name: hub_season
-    description: "Hub: уникальные сезоны. BK = season_year (год). Только из AF."
+    description: "Hub: уникальные сезоны. BK = season_year (год). Источник: Understat."
     columns:
       - name: hub_season_hk
         description: "MD5-хеш года сезона (PK)"
@@ -59,7 +59,7 @@ models:
           - not_null
 
   - name: hub_match
-    description: "Hub: уникальные матчи. BK = match_bk ('af|{fixture_id}' или 'sb|{match_id}'). AF и SB — разные записи."
+    description: "Hub: уникальные матчи. BK = match_bk ('sb|{match_id}' или 'understat|{match_id}'). SB и Understat — разные записи."
     columns:
       - name: hub_match_hk
         description: "MD5-хеш бизнес-ключа матча (PK)"
@@ -76,10 +76,28 @@ models:
         tests:
           - not_null
 
+  - name: hub_player
+    description: "Hub: уникальные игроки. BK = player_bk ('understat|{player_id}'). Источник: Understat."
+    columns:
+      - name: hub_player_hk
+        description: "MD5-хеш бизнес-ключа игрока (PK)"
+        tests:
+          - not_null
+          - unique
+      - name: player_bk
+        tests:
+          - not_null
+      - name: ldts
+        tests:
+          - not_null
+      - name: rsrc
+        tests:
+          - not_null
+
   # ─── LINKS ───────────────────────────────────────────────────────────────────
 
   - name: lnk_match_team
-    description: "Link: матч ↔ команда с ролью (home/away). Только AF."
+    description: "Link: матч ↔ команда с ролью (home/away). Источник: Understat."
     columns:
       - name: lnk_match_team_hk
         description: "MD5-хеш (hub_match_hk || hub_team_hk || team_role) (PK)"
@@ -110,8 +128,101 @@ models:
         tests:
           - not_null
 
+  - name: lnk_player_team
+    description: "Link: игрок ↔ команда ↔ сезон (Understat). Гранулярность — срез на конец сезона."
+    columns:
+      - name: lnk_player_team_hk
+        description: "MD5-хеш (hub_player_hk || hub_team_hk || hub_season_hk) (PK)"
+        tests:
+          - not_null
+          - unique
+      - name: hub_player_hk
+        tests:
+          - not_null
+          - relationships:
+              to: ref('hub_player')
+              field: hub_player_hk
+      - name: hub_team_hk
+        tests:
+          - not_null
+          - relationships:
+              to: ref('hub_team')
+              field: hub_team_hk
+      - name: hub_season_hk
+        tests:
+          - not_null
+          - relationships:
+              to: ref('hub_season')
+              field: hub_season_hk
+      - name: ldts
+        tests:
+          - not_null
+      - name: rsrc
+        tests:
+          - not_null
+
+  - name: lnk_match_competition_season
+    description: "Link: матч ↔ турнир ↔ сезон. Источник: Understat."
+    columns:
+      - name: lnk_match_comp_season_hk
+        description: "MD5-хеш (hub_match_hk || hub_competition_hk || hub_season_hk) (PK)"
+        tests:
+          - not_null
+          - unique
+      - name: hub_match_hk
+        tests:
+          - not_null
+          - relationships:
+              to: ref('hub_match')
+              field: hub_match_hk
+      - name: hub_competition_hk
+        tests:
+          - not_null
+          - relationships:
+              to: ref('hub_competition')
+              field: hub_competition_hk
+      - name: hub_season_hk
+        tests:
+          - not_null
+          - relationships:
+              to: ref('hub_season')
+              field: hub_season_hk
+      - name: ldts
+        tests:
+          - not_null
+      - name: rsrc
+        tests:
+          - not_null
+
+  - name: lnk_match_same_as
+    description: "Same-as link: один матч в Understat ↔ в StatsBomb. Fuzzy по (date, league, normalized teams)."
+    columns:
+      - name: lnk_match_same_as_hk
+        description: "MD5-хеш (hub_match_hk_understat || hub_match_hk_sb) (PK)"
+        tests:
+          - not_null
+          - unique
+      - name: hub_match_hk_understat
+        tests:
+          - not_null
+          - relationships:
+              to: ref('hub_match')
+              field: hub_match_hk
+      - name: hub_match_hk_sb
+        tests:
+          - not_null
+          - relationships:
+              to: ref('hub_match')
+              field: hub_match_hk
+      - name: ldts
+        tests:
+          - not_null
+      - name: rsrc
+        tests:
+          - not_null
+
   - name: lnk_team_competition_season
-    description: "Link: команда ↔ турнир ↔ сезон. Показывает участие в соревновании."
+    description: "Link: команда ↔ турнир ↔ сезон. Участие в соревновании. Источник: Understat."
     columns:
       - name: lnk_team_comp_season_hk
         description: "MD5-хеш (hub_team_hk || hub_competition_hk || hub_season_hk) (PK)"
@@ -146,7 +257,7 @@ models:
   # ─── SATELLITES ──────────────────────────────────────────────────────────────
 
   - name: sat_team_details
-    description: "Satellite: описательные атрибуты команды (название, страна, стадион). Append-only с hashdiff."
+    description: "Satellite: описательные атрибуты команды (название, лига). Источник: Understat. Append-only с hashdiff."
     columns:
       - name: hub_team_hk
         tests:
@@ -157,7 +268,7 @@ models:
       - name: sat_team_details_hashdiff
         tests:
           - not_null
-      - name: team_name
+      - name: team_title
         tests:
           - not_null
       - name: ldts
@@ -168,7 +279,7 @@ models:
           - not_null
 
   - name: sat_match_score
-    description: "Satellite: счёт и статус матча из AF и SB. Append-only с hashdiff."
+    description: "Satellite: счёт и статус матча из StatsBomb. Append-only с hashdiff."
     columns:
       - name: hub_match_hk
         tests:
@@ -177,97 +288,6 @@ models:
               to: ref('hub_match')
               field: hub_match_hk
       - name: sat_match_score_hashdiff
-        tests:
-          - not_null
-      - name: ldts
-        tests:
-          - not_null
-      - name: rsrc
-        tests:
-          - not_null
-
-  # ─── ЭТАП 3.5 ────────────────────────────────────────────────────────────────
-
-  - name: hub_player
-    description: "Hub: уникальные игроки. BK = player_bk ('af|{player_id}'). Источники: af_topscorers + af_players."
-    columns:
-      - name: hub_player_hk
-        description: "MD5-хеш бизнес-ключа игрока (PK)"
-        tests:
-          - not_null
-          - unique
-      - name: player_bk
-        tests:
-          - not_null
-      - name: ldts
-        tests:
-          - not_null
-      - name: rsrc
-        tests:
-          - not_null
-
-  - name: lnk_player_team
-    description: "Link: игрок ↔ команда (из данных бомбардиров AF)."
-    columns:
-      - name: lnk_player_team_hk
-        description: "MD5-хеш (hub_player_hk || hub_team_hk) (PK)"
-        tests:
-          - not_null
-          - unique
-      - name: hub_player_hk
-        tests:
-          - not_null
-          - relationships:
-              to: ref('hub_player')
-              field: hub_player_hk
-      - name: hub_team_hk
-        tests:
-          - not_null
-          - relationships:
-              to: ref('hub_team')
-              field: hub_team_hk
-      - name: ldts
-        tests:
-          - not_null
-      - name: rsrc
-        tests:
-          - not_null
-
-  - name: sat_player_profile
-    description: "Satellite: расширенный профиль игрока (дата рождения, рост, вес, позиция). Источник: af_players."
-    columns:
-      - name: hub_player_hk
-        tests:
-          - not_null
-          - relationships:
-              to: ref('hub_player')
-              field: hub_player_hk
-      - name: sat_player_profile_hashdiff
-        tests:
-          - not_null
-      - name: player_name
-        tests:
-          - not_null
-      - name: ldts
-        tests:
-          - not_null
-      - name: rsrc
-        tests:
-          - not_null
-
-  - name: sat_player_details
-    description: "Satellite: описательные атрибуты игрока (имя, национальность, фото). Append-only с hashdiff."
-    columns:
-      - name: hub_player_hk
-        tests:
-          - not_null
-          - relationships:
-              to: ref('hub_player')
-              field: hub_player_hk
-      - name: sat_player_details_hashdiff
-        tests:
-          - not_null
-      - name: player_name
         tests:
           - not_null
       - name: ldts
@@ -315,31 +335,16 @@ models:
         tests:
           - not_null
 
-  - name: sat_standing
-    description: "Satellite: снапшот турнирной таблицы (место, очки, статистика). Multi-active по dt."
+  - name: sat_match_score_understat
+    description: "Satellite: счёт и дата Understat-матча. Append-only с hashdiff."
     columns:
-      - name: hub_team_hk
+      - name: hub_match_hk
         tests:
           - not_null
           - relationships:
-              to: ref('hub_team')
-              field: hub_team_hk
-      - name: hub_competition_hk
-        tests:
-          - not_null
-          - relationships:
-              to: ref('hub_competition')
-              field: hub_competition_hk
-      - name: hub_season_hk
-        tests:
-          - not_null
-          - relationships:
-              to: ref('hub_season')
-              field: hub_season_hk
-      - name: sat_standing_hashdiff
-        tests:
-          - not_null
-      - name: standing_rank
+              to: ref('hub_match')
+              field: hub_match_hk
+      - name: sat_match_score_understat_hashdiff
         tests:
           - not_null
       - name: ldts
@@ -349,28 +354,16 @@ models:
         tests:
           - not_null
 
-  - name: sat_topscorer
-    description: "Satellite: статистика бомбардира (голы, ассисты, игры) по лиге/сезону. Multi-active по dt."
+  - name: sat_match_xg
+    description: "Satellite: xG на уровне матча (Understat). home_xg/away_xg. Линковка с SB в Business Vault."
     columns:
-      - name: hub_player_hk
+      - name: hub_match_hk
         tests:
           - not_null
           - relationships:
-              to: ref('hub_player')
-              field: hub_player_hk
-      - name: hub_competition_hk
-        tests:
-          - not_null
-          - relationships:
-              to: ref('hub_competition')
-              field: hub_competition_hk
-      - name: hub_season_hk
-        tests:
-          - not_null
-          - relationships:
-              to: ref('hub_season')
-              field: hub_season_hk
-      - name: sat_topscorer_hashdiff
+              to: ref('hub_match')
+              field: hub_match_hk
+      - name: sat_match_xg_hashdiff
         tests:
           - not_null
       - name: ldts
