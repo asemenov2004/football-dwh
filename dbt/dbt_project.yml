@@ -32,6 +32,12 @@ models:
       satellites:
         +materialized: incremental
         +incremental_strategy: append
+    business_vault:
+      +schema: business_vault
+      +materialized: table
+    marts:
+      +schema: marts
+      +materialized: table
 
 vars:
   datavault4dbt:

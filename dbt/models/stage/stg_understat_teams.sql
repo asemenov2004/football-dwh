@@ -57,6 +57,8 @@ SELECT
     (raw_payload ->> 'D')::int           AS draws,
     (raw_payload ->> 'L')::int           AS losses,
     (raw_payload ->> 'PTS')::int         AS points,
+    (raw_payload ->> 'G')::int           AS goals_for,
+    (raw_payload ->> 'GA')::int          AS goals_against,
 
     -- Hashdiff
     md5(
@@ -67,6 +69,8 @@ SELECT
         COALESCE(raw_payload ->> 'OPPDA', '^^') || '||' ||
         COALESCE(raw_payload ->> 'xPTS',  '^^') || '||' ||
         COALESCE(raw_payload ->> 'M',     '^^') || '||' ||
+        COALESCE(raw_payload ->> 'G',     '^^') || '||' ||
+        COALESCE(raw_payload ->> 'GA',    '^^') || '||' ||
         COALESCE(league_id, '^^')               || '||' ||
         COALESCE(cast(season AS text), '^^')
     )                                            AS sat_team_xg_hashdiff,

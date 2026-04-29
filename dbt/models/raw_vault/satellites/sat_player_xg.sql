@@ -12,6 +12,7 @@
         'xg', 'xa', 'npxg', 'npg', 'xg_chain', 'xg_buildup',
         'goals', 'assists', 'shots', 'key_passes',
         'games', 'minutes', 'position',
+        'player_name', 'team_title',
         'league_id', 'season_year'
     ],
     src_ldts='ldts',
