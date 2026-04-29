@@ -1,6 +1,5 @@
 -- Hub для бизнес-сущности «Сезон».
--- BK = season_year (год, напр. 2024) БЕЗ record_source.
--- Источник: AF (season_year = числовой год). SB season_id ≠ год — маппинг отложен.
+-- BK = season_year (год, напр. 2024). Источник: Understat.
 
 {{ config(materialized='incremental', unique_key='hub_season_hk') }}
 
@@ -10,8 +9,6 @@
     src_ldts='ldts',
     src_rsrc='rsrc',
     source_models={
-        'stg_af_leagues': {},
-        'stg_af_standings': {},
         'stg_understat_players': {},
         'stg_understat_teams': {}
     }

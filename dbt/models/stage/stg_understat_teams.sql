@@ -18,6 +18,19 @@ SELECT
     md5('understat' || '||' ||
         COALESCE(lower(trim(team_title)), '^^'))  AS hub_team_hk,
 
+    -- Hashkey для hub_season
+    md5(COALESCE(cast(season AS text), '^^'))     AS hub_season_hk,
+
+    -- Hashkey для hub_competition (BK = league_id slug)
+    md5(COALESCE(lower(trim(league_id)), '^^'))   AS hub_competition_hk,
+
+    -- PK линка team↔competition↔season
+    md5(
+        md5('understat' || '||' || COALESCE(lower(trim(team_title)), '^^')) || '||' ||
+        md5(COALESCE(lower(trim(league_id)), '^^'))                          || '||' ||
+        md5(COALESCE(cast(season AS text), '^^'))
+    )                                              AS lnk_team_comp_season_hk,
+
     -- Business key
     'understat|' || lower(trim(team_title))       AS team_bk,
 
@@ -57,6 +70,12 @@ SELECT
         COALESCE(league_id, '^^')               || '||' ||
         COALESCE(cast(season AS text), '^^')
     )                                            AS sat_team_xg_hashdiff,
+
+    -- Hashdiff для sat_team_details (только описательные атрибуты)
+    md5(
+        COALESCE(team_title, '^^')                || '||' ||
+        COALESCE(lower(trim(league_id)), '^^')
+    )                                            AS sat_team_details_hashdiff,
 
     -- Служебные
     loaded_at   AS ldts,

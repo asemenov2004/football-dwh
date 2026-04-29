@@ -1,7 +1,9 @@
 -- Stage-модель для sat_player_xg из Understat.
 -- Источник: stage.understat_players (сезонная xG-статистика по лигам).
 -- BK игрока: 'understat|{player_id}' — собственный understat-ключ.
--- Маппинг с AF через player_name выполняется в Business Vault (Этап 4в).
+-- ВАЖНО: team_title в Understat для трансферных игроков = строка через запятую
+-- ("AC Milan,Atalanta"). Здесь храним как есть в саттелите. Развёртку для
+-- lnk_player_team делает stg_understat_player_team.
 
 WITH src AS (
     SELECT
@@ -22,11 +24,14 @@ extracted AS (
         season,
         loaded_at,
 
+        raw_payload ->> 'team_title'             AS team_title,
+
         (raw_payload ->> 'xG')::numeric          AS xg,
         (raw_payload ->> 'xA')::numeric          AS xa,
         (raw_payload ->> 'npxG')::numeric        AS npxg,
         (raw_payload ->> 'xGChain')::numeric     AS xg_chain,
         (raw_payload ->> 'xGBuildup')::numeric   AS xg_buildup,
+        (raw_payload ->> 'npg')::int             AS npg,
         (raw_payload ->> 'goals')::int           AS goals,
         (raw_payload ->> 'assists')::int         AS assists,
         (raw_payload ->> 'shots')::int           AS shots,
@@ -42,6 +47,13 @@ SELECT
     md5('understat' || '||' ||
         COALESCE(player_id, '^^'))              AS hub_player_hk,
 
+    -- Hashkey для hub_season
+    md5(COALESCE(cast(season AS text), '^^'))  AS hub_season_hk,
+
+    -- Hashkey для hub_competition (BK = league_id slug)
+    md5(COALESCE(lower(trim(league_id)), '^^'))
+                                                AS hub_competition_hk,
+
     -- Business key
     'understat|' || player_id                  AS player_bk,
 
@@ -51,11 +63,13 @@ SELECT
     -- Контекст (входит в hashdiff — один игрок в разных лигах = разные строки)
     league_id,
     player_name,
+    team_title,
 
     -- Payload
     xg,
     xa,
     npxg,
+    npg,
     xg_chain,
     xg_buildup,
     goals,

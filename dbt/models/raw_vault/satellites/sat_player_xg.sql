@@ -9,7 +9,7 @@
     parent_hashkey='hub_player_hk',
     src_hashdiff='sat_player_xg_hashdiff',
     src_payload=[
-        'xg', 'xa', 'npxg', 'xg_chain', 'xg_buildup',
+        'xg', 'xa', 'npxg', 'npg', 'xg_chain', 'xg_buildup',
         'goals', 'assists', 'shots', 'key_passes',
         'games', 'minutes', 'position',
         'league_id', 'season_year'

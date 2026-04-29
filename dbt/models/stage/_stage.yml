@@ -1,35 +1,23 @@
 version: 2
 
 models:
-  - name: stg_af_leagues
-    description: "DV-stage для hub_competition и hub_season из API-Football (по лигам)"
-
-  - name: stg_af_teams
-    description: "DV-stage для hub_team, lnk_team_competition_season, sat_team_details из API-Football"
-
-  - name: stg_af_fixtures
-    description: "DV-stage для hub_match и sat_match_score из API-Football"
-
-  - name: stg_af_fixtures_teams
-    description: "DV-stage для lnk_match_team — разворот home/away из AF fixtures"
-
   - name: stg_sb_competitions
     description: "DV-stage для hub_competition из StatsBomb (slug-маппинг через CASE)"
 
   - name: stg_sb_matches
     description: "DV-stage для hub_match и sat_match_score из StatsBomb"
 
-  - name: stg_af_standings
-    description: "DV-stage для sat_standing из API-Football (снапшоты турнирных таблиц)"
-
-  - name: stg_af_topscorers
-    description: "DV-stage для hub_player, sat_player_details, sat_topscorer, lnk_player_team из API-Football"
-
-  - name: stg_af_players
-    description: "DV-stage для hub_player и sat_player_profile из AF /players (полный профиль: рождение, рост, вес, позиция)"
-
   - name: stg_understat_players
-    description: "DV-stage для hub_player и sat_player_xg из Understat (xG, xA, npxG, xGChain, xGBuildup)"
+    description: "DV-stage для hub_player, hub_team, hub_competition, hub_season, lnk_player_team и sat_player_xg (Understat)"
 
   - name: stg_understat_teams
-    description: "DV-stage для hub_team и sat_team_xg из Understat (xG, PPDA, OPPDA, xPTS)"
+    description: "DV-stage для hub_team, hub_competition, hub_season, lnk_team_competition_season, sat_team_details, sat_team_xg"
+
+  - name: stg_understat_matches
+    description: "DV-stage для hub_match, lnk_match_competition_season, sat_match_xg, sat_match_score_understat (Understat)"
+
+  - name: stg_understat_matches_teams
+    description: "DV-stage для lnk_match_team — разворот home/away из Understat matches"
+
+  - name: stg_match_same_as
+    description: "DV-stage для lnk_match_same_as — fuzzy bridge Understat ↔ StatsBomb матчей"

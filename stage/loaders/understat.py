@@ -49,6 +49,20 @@ ON CONFLICT (team_title, league_id, season) DO UPDATE
         loaded_at   = now()
 """
 
+_MATCHES_UPSERT = """
+INSERT INTO stage.understat_matches
+    (match_id, league_id, season, dt, raw_payload)
+VALUES
+    (:match_id, :league_id, :season, :dt,
+     CAST(:raw_payload AS JSONB))
+ON CONFLICT (match_id) DO UPDATE
+    SET dt          = EXCLUDED.dt,
+        league_id   = EXCLUDED.league_id,
+        season      = EXCLUDED.season,
+        raw_payload = EXCLUDED.raw_payload,
+        loaded_at   = now()
+"""
+
 
 def load_players(dt: date, season: int) -> int:
     rows: list[dict[str, Any]] = []
@@ -114,4 +128,37 @@ def load_teams(dt: date, season: int) -> int:
         if rows:
             conn.execute(text(_TEAMS_UPSERT), rows)
     log.info("stage.understat_teams: upserted %d строк", len(rows))
+    return len(rows)
+
+
+def load_matches(dt: date, season: int) -> int:
+    rows: list[dict[str, Any]] = []
+    for league in config.UNDERSTAT_LEAGUES:
+        slug = league["name"]
+        key = build_object_key(
+            source="understat",
+            endpoint="matches",
+            league_id=slug,
+            season=season,
+            dt=_dt_str(dt),
+            filename="matches.json",
+        )
+        payload = get_json(config.RAW_UNDERSTAT_BUCKET, key)
+        if not payload:
+            log.warning("understat/matches: файл %s отсутствует — skip", key)
+            continue
+        for item in payload:
+            rows.append({
+                "match_id":    item["id"],
+                "league_id":   slug,
+                "season":      season,
+                "dt":          dt,
+                "raw_payload": json.dumps(item, ensure_ascii=False),
+            })
+
+    engine = get_engine()
+    with engine.begin() as conn:
+        if rows:
+            conn.execute(text(_MATCHES_UPSERT), rows)
+    log.info("stage.understat_matches: upserted %d строк", len(rows))
     return len(rows)

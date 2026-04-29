@@ -38,6 +38,11 @@ standalone_admin_password.txt
 # IDE
 .vscode/
 .idea/
+
+# Local tooling / scratch
+.claude/
+downloaded_files/
+install.cmd
 *.swp
 *.swo
 

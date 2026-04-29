@@ -1,8 +1,7 @@
 """DAG: загрузка Understat JSON из MinIO в stage.understat_* Postgres.
 
 schedule=None — триггерится из ingest_understat.
-Не триггерит dbt_raw_vault — dbt запускается только из AF-пайплайна.
-Запускай dbt вручную после understat-загрузки если нужно обновить RV.
+По завершении триггерит dbt_raw_vault.
 """
 from __future__ import annotations
 
@@ -11,6 +10,7 @@ from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.models.param import Param
 from airflow.operators.python import PythonOperator
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
 from stage.loaders import understat as us_loader
 
@@ -37,7 +37,7 @@ with DAG(
     schedule=None,
     catchup=False,
     default_args=DEFAULT_ARGS,
-    params={"season": Param(default=2025, type="integer")},
+    params={"season": Param(default=2025, type=["integer", "string"])},
     max_active_runs=1,
     tags=["stage", "understat"],
 ) as dag:
@@ -49,3 +49,14 @@ with DAG(
         task_id="load_teams",
         python_callable=_wrap(us_loader.load_teams),
     )
+    t_matches = PythonOperator(
+        task_id="load_matches",
+        python_callable=_wrap(us_loader.load_matches),
+    )
+    trigger_dbt = TriggerDagRunOperator(
+        task_id="trigger_dbt_raw_vault",
+        trigger_dag_id="dbt_raw_vault",
+        wait_for_completion=False,
+        reset_dag_run=True,
+    )
+    [t_players, t_teams, t_matches] >> trigger_dbt
