@@ -235,6 +235,14 @@ def chart_params() -> dict[str, dict[str, Any]]:
                 "adhoc_filters": [],
                 "table_timestamp_format": "smart_date",
                 "color_pn": True,
+                "conditional_formatting": [
+                    {
+                        "column": "goals_minus_xg",
+                        "operator": ">",
+                        "targetValue": 0,
+                        "colorScheme": "#5AC189",
+                    },
+                ],
             },
         },
         "Top-10 команд по avg xG": {
@@ -275,22 +283,39 @@ def chart_params() -> dict[str, dict[str, Any]]:
                 "row_limit": 10,
                 "adhoc_filters": [],
                 "table_timestamp_format": "smart_date",
+                "conditional_formatting": [
+                    {
+                        "column": "total_xg",
+                        "operator": ">",
+                        "targetValue": 4.5,
+                        "colorScheme": "#FFB020",
+                    },
+                ],
             },
         },
     }
 
 
+DASHBOARD_HEADER_MD = """### Football DWH — курсовая 2026
+Источники: **Understat** (xG/xA/PPDA, топ-5 лиг, сезоны 2022–2025) + StatsBomb (исторические).
+Стек: Airflow → MinIO → Postgres (DV2.0 + dbt + datavault4dbt) → ClickHouse → Superset.
+
+Фильтры справа переключают **лигу** и **сезон** для всех графиков сразу.
+**Коды лиг:** `epl` = Premier League · `la_liga` = La Liga · `bundesliga` = Bundesliga · `serie_a` = Serie A · `ligue_1` = Ligue 1.
+"""
+
+
 def build_dashboard_layout(chart_ids: dict[str, int]) -> dict[str, Any]:
-    """Минимальный grid layout: 3 ряда по 2 чарта.
+    """Layout: header (markdown) + 3 ряда по 2 чарта.
     Структура Superset position_json: dict с GRID_ID, ROW-uuid, CHART-uuid.
     """
     def cid(name: str) -> int: return chart_ids[name]
 
     names = list(chart_ids.keys())
     rows = [
-        (names[0], names[3]),  # таблица + big number
-        (names[1], names[4]),  # scatter + bar
-        (names[2], names[5]),  # timeseries + матчи
+        (names[0], names[3]),  # таблица + topo overperformers
+        (names[1], names[4]),  # bar bombardirov + bar teams
+        (names[2], names[5]),  # area + matches
     ]
 
     layout: dict[str, Any] = {
@@ -303,6 +328,26 @@ def build_dashboard_layout(chart_ids: dict[str, int]) -> dict[str, Any]:
             "parents": ["ROOT_ID"],
         },
     }
+
+    # Markdown header строка
+    header_row_id = "ROW-" + uuid.uuid4().hex[:10]
+    header_md_id = "MARKDOWN-" + uuid.uuid4().hex[:10]
+    layout["GRID_ID"]["children"].append(header_row_id)
+    layout[header_row_id] = {
+        "type": "ROW",
+        "id": header_row_id,
+        "children": [header_md_id],
+        "parents": ["ROOT_ID", "GRID_ID"],
+        "meta": {"background": "BACKGROUND_TRANSPARENT"},
+    }
+    layout[header_md_id] = {
+        "type": "MARKDOWN",
+        "id": header_md_id,
+        "children": [],
+        "parents": ["ROOT_ID", "GRID_ID", header_row_id],
+        "meta": {"width": 12, "height": 22, "code": DASHBOARD_HEADER_MD},
+    }
+
     for left, right in rows:
         row_id = "ROW-" + uuid.uuid4().hex[:10]
         chart_left = "CHART-" + uuid.uuid4().hex[:10]
@@ -404,6 +449,7 @@ def update_dashboard_layout(
             "position_json": json.dumps(layout),
             "json_metadata": json.dumps(json_metadata),
             "css": "",
+            "certification_details": "Football DWH курсовая 2026 — Understat + StatsBomb → Postgres DV2.0 → ClickHouse",
         },
     )
     r.raise_for_status()
