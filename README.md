@@ -111,6 +111,16 @@ WHERE league_id='epl' AND season_year=2025 ORDER BY position LIMIT 5;
 SELECT player_name, teams_concat, goals, round(xg,1) AS xg
 FROM marts.mart_top_scorers
 WHERE league_id='epl' AND season_year=2025 ORDER BY goals DESC LIMIT 5;
+
+-- Топ-5 матчей EPL 2025 по совокупному xG (mart_match_facts):
+SELECT match_date, home_team_title, home_goals, away_goals, away_team_title, round(total_xg,2) AS total_xg
+FROM marts.mart_match_facts
+WHERE league_id='epl' AND season_year=2025 ORDER BY total_xg DESC LIMIT 5;
+
+-- "Удачливые" игроки EPL 2025 (goals - xG, минимум 450 минут):
+SELECT player_name, team_title, goals, round(xg,2) AS xg, goals_minus_xg
+FROM marts.mart_player_overperformers
+WHERE league_id='epl' AND season_year=2025 ORDER BY goals_minus_xg DESC LIMIT 5;
 ```
 
 Pragmatic-замечание: **Spark пишет parquet в локальный mount-volume**, заливка в MinIO — отдельный `mc cp`. Прямая запись через `s3a://` требует hadoop-aws + aws-java-sdk-bundle (~273MB через Maven Central) — из РФ упорно фейлится connection refused. Для курсовой обходной путь не критичен, Spark остаётся в pipeline (JDBC + parquet-сериализация, демонстрация кластера).
@@ -159,3 +169,6 @@ DV-stage views (`public_stage_dv`) читают `stage.*` и вычисляют 
 | `br_team_competition_season` | BV | 386 | Bridge: команда × лига × сезон (плоская копия PIT) |
 | `mart_league_table` | Mart (PG + CH) | 386 | Турнирная таблица: PTS/xPTS/xG/PPDA + position |
 | `mart_top_scorers` | Mart (PG + CH) | 11 054 | Топ-скореры с teams_concat для трансферов |
+| `mart_match_facts` | Mart (PG + CH) | 6 901 | Матч-уровень (wide): дата/команды/счёт/xG/result. База для time-series в Superset |
+| `mart_player_overperformers` | Mart (PG + CH) | 7 832 | Игроки + goals−xG + percentile_rank внутри (league, season). Фильтр minutes ≥ 450 |
+| `mart_team_xg_trend` | Mart (PG + CH) | 386 | Агрегаты xG по матчам команды за сезон (avg/std/max). Дополняет league_table детализацией |

@@ -42,6 +42,12 @@ MARTS = [
      "s3('http://minio:9000/marts/mart_league_table/*.parquet', '{ak}', '{sk}', 'Parquet')"),
     ("mart_top_scorers",
      "s3('http://minio:9000/marts/mart_top_scorers/*.parquet', '{ak}', '{sk}', 'Parquet')"),
+    ("mart_match_facts",
+     "s3('http://minio:9000/marts/mart_match_facts/*.parquet', '{ak}', '{sk}', 'Parquet')"),
+    ("mart_player_overperformers",
+     "s3('http://minio:9000/marts/mart_player_overperformers/*.parquet', '{ak}', '{sk}', 'Parquet')"),
+    ("mart_team_xg_trend",
+     "s3('http://minio:9000/marts/mart_team_xg_trend/*.parquet', '{ak}', '{sk}', 'Parquet')"),
 ]
 
 

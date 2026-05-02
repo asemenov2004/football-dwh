@@ -30,3 +30,52 @@ models:
     tests:
       - dbt_utils.unique_combination_of_columns:
           combination_of_columns: [player_bk, league_id, season_year]
+
+  - name: mart_match_facts
+    description: "Матч-уровень (wide). 1 строка = 1 матч Understat. База для time-series и scatter в Superset."
+    columns:
+      - name: match_hk
+        description: "PK — hub_match_hk Understat-матча."
+        tests:
+          - not_null
+          - unique
+      - name: league_id
+        tests: [not_null]
+      - name: season_year
+        tests: [not_null]
+      - name: match_datetime
+        tests: [not_null]
+      - name: result
+        tests:
+          - accepted_values:
+              values: ['home', 'away', 'draw']
+
+  - name: mart_player_overperformers
+    description: "Игроки и их разница goals-xG, percentile_rank внутри (league, season). Фильтр minutes >= 450."
+    columns:
+      - name: player_hk
+        tests: [not_null]
+      - name: league_id
+        tests: [not_null]
+      - name: season_year
+        tests: [not_null]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [player_hk, league_id, season_year]
+      - dbt_utils.expression_is_true:
+          expression: "minutes >= 450"
+
+  - name: mart_team_xg_trend
+    description: "Агрегаты xG по матчам команды за сезон (avg/std/max). Грейн: team × league × season."
+    columns:
+      - name: team_title
+        tests: [not_null]
+      - name: league_id
+        tests: [not_null]
+      - name: season_year
+        tests: [not_null]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [team_title, league_id, season_year]
+      - dbt_utils.expression_is_true:
+          expression: "matches > 0"
