@@ -35,6 +35,8 @@ MARTS = [
     ("public_marts.mart_match_facts",           f"{OUTPUT_DIR}/mart_match_facts"),
     ("public_marts.mart_player_overperformers", f"{OUTPUT_DIR}/mart_player_overperformers"),
     ("public_marts.mart_team_xg_trend",         f"{OUTPUT_DIR}/mart_team_xg_trend"),
+    ("public_marts.mart_team_elo_current",      f"{OUTPUT_DIR}/mart_team_elo_current"),
+    ("public_marts.mart_team_elo_history",      f"{OUTPUT_DIR}/mart_team_elo_history"),
 ]
 
 
