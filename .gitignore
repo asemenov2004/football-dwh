@@ -28,6 +28,7 @@ _SUCCESS
 spark-warehouse/
 derby.log
 metastore_db/
+spark/output/
 
 # Airflow
 airflow.cfg

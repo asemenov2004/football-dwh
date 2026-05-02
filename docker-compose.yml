@@ -153,6 +153,7 @@ services:
         mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
         mc mb --ignore-existing local/raw-statsbomb
         mc mb --ignore-existing local/raw-understat
+        mc mb --ignore-existing local/marts
         mc ls local/
     restart: "no"
     networks: [football_net]
@@ -167,8 +168,10 @@ services:
       CLICKHOUSE_DB: ${CLICKHOUSE_DB}
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
     volumes:
-      - ./data/clickhouse/data:/var/lib/clickhouse
-      - ./data/clickhouse/logs:/var/log/clickhouse-server
+      # named volumes вместо bind-mount на NTFS — иначе rename падает с
+      # Permission denied при INSERT (CH создаёт tmp_insert_... и переименовывает).
+      - clickhouse_data:/var/lib/clickhouse
+      - clickhouse_logs:/var/log/clickhouse-server
     ports:
       - "${CLICKHOUSE_HTTP_PORT}:8123"
       - "${CLICKHOUSE_NATIVE_PORT}:9000"
@@ -187,6 +190,33 @@ services:
           memory: 2g
     networks: [football_net]
     restart: unless-stopped
+
+  # ---------- ClickHouse: init (DDL для март-витрин) ----------
+  # Применяет stage/ddl/clickhouse_marts.sql при старте стека.
+  # Идемпотентно (CREATE DATABASE/TABLE IF NOT EXISTS).
+  clickhouse-init:
+    image: clickhouse/clickhouse-server:24.8
+    container_name: football_clickhouse_init
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    environment:
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+    volumes:
+      - ./stage/ddl:/ddl:ro
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        set -e
+        clickhouse-client \
+          --host clickhouse --port 9000 \
+          --user "$$CLICKHOUSE_USER" --password "$$CLICKHOUSE_PASSWORD" \
+          --multiquery < /ddl/clickhouse_marts.sql
+        echo "clickhouse_marts.sql applied"
+    restart: "no"
+    networks: [football_net]
 
   # ---------- Airflow: init (миграции + admin user) ----------
   airflow-init:
@@ -350,3 +380,7 @@ networks:
   football_net:
     name: football_net
     driver: bridge
+
+volumes:
+  clickhouse_data:
+  clickhouse_logs:

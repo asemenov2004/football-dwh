@@ -1,6 +1,4 @@
 # Зависимости Airflow-образа. Добавляются по этапам.
-# Этап 5 добавит: clickhouse-connect, apache-airflow-providers-postgres
-# Этап 7 добавит: apache-airflow-providers-apache-spark
 
 # Этап 1 — ingestion в raw lake
 # requests не фиксируем: Airflow 2.9.3 тянет свою версию через constraints
@@ -20,3 +18,8 @@ dbt-postgres==1.8.2
 # Этап 4б — Understat (xG-статистика)
 understat==0.1.14
 aiohttp==3.8.3
+
+# Этап 5б — ClickHouse-загрузка из MinIO (HTTP клиент).
+# Spark-перелив запускается отдельным скриптом scripts/run_spark_marts.sh
+# через `docker exec football_spark_master spark-submit ...`.
+clickhouse-connect==0.7.19

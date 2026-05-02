@@ -80,10 +80,40 @@ data/          — bind-mounts (gitignored): postgres, minio, clickhouse, лог
 2. ✅ Stage в Postgres (5 таблиц: `understat_matches/teams/players`, `sb_matches/competitions`)
 3. ✅ Raw Vault — dbt + datavault4dbt (hubs/links/satellites)
 4. ✅ Расширение RV: xG-стек Understat (matches/teams/players), bridge SB↔Understat, lnk_player_team с учётом мид-сезонных трансферов
-5. Business Vault (PIT/bridge: команда-сезон, игрок-сезон, матч)
-6. Data Marts в ClickHouse + Superset
+5. ✅ Business Vault (PIT/bridge) + Marts в Postgres + перелив в ClickHouse через Spark/MinIO
+6. Superset-дашборды поверх ClickHouse-витрин
 7. Spark (расчёт Elo)
 8. CI + DQ + документация
+
+### Этап 5: BV + Marts + ClickHouse (как запускать)
+
+После ingestion + Raw Vault конвейер до витрин:
+
+```bash
+# 1. Spark JDBC read Postgres marts.* → Parquet (./spark/output/) → MinIO bucket marts/
+bash scripts/run_spark_marts.sh
+
+# 2. Триггер DAG в Airflow UI (http://localhost:18080) или CLI:
+docker exec football_airflow_scheduler airflow dags trigger build_marts
+```
+
+DAG `build_marts` шаги: `dbt run tag:bv` → `dbt run tag:mart` → `dbt test` → `clickhouse_load`
+(TRUNCATE + `INSERT FROM s3()` для каждой март-таблицы).
+
+ClickHouse-витрины:
+
+```sql
+-- Через clickhouse-client или http://localhost:8123/play
+SELECT team_title, position, pts, round(xpts,2) AS xpts, ppda
+FROM marts.mart_league_table
+WHERE league_id='epl' AND season_year=2025 ORDER BY position LIMIT 5;
+
+SELECT player_name, teams_concat, goals, round(xg,1) AS xg
+FROM marts.mart_top_scorers
+WHERE league_id='epl' AND season_year=2025 ORDER BY goals DESC LIMIT 5;
+```
+
+Pragmatic-замечание: **Spark пишет parquet в локальный mount-volume**, заливка в MinIO — отдельный `mc cp`. Прямая запись через `s3a://` требует hadoop-aws + aws-java-sdk-bundle (~273MB через Maven Central) — из РФ упорно фейлится connection refused. Для курсовой обходной путь не критичен, Spark остаётся в pipeline (JDBC + parquet-сериализация, демонстрация кластера).
 
 ### Источники данных (Этап 4)
 
@@ -113,6 +143,19 @@ data/          — bind-mounts (gitignored): postgres, minio, clickhouse, лог
 | `sat_match_score` | 2 460 | SB: счёт + статус матча |
 | `sat_match_score_understat` | 6 895 | Understat: счёт + datetime |
 | `sat_match_xg` | 6 895 | Understat: home_xg / away_xg |
-| `sat_player_xg` | 11 054 | xG/xA/npxG/goals/assists/minutes на сезон |
+| `sat_player_xg` | 11 054 | xG/xA/npxG/goals/assists/minutes/player_name/team_title на сезон |
 
 DV-stage views (`public_stage_dv`) читают `stage.*` и вычисляют MD5-хеши на лету — физически данных не хранят.
+
+### Business Vault + Marts (Этап 5)
+
+Схемы `public_business_vault` и `public_marts` в Postgres + `marts` в ClickHouse.
+
+| Объект | Слой | Строк | Описание |
+|---|---|---|---|
+| `pit_team_season` | BV | 386 | PIT-снапшот: команда × лига × сезон, latest sat_team_xg + sat_team_details |
+| `pit_player_season` | BV | 11 054 | PIT-снапшот: игрок × лига × сезон, latest sat_player_xg |
+| `br_player_team_season` | BV | 11 360 | Bridge: игрок × команда × лига × сезон (трансферы) |
+| `br_team_competition_season` | BV | 386 | Bridge: команда × лига × сезон (плоская копия PIT) |
+| `mart_league_table` | Mart (PG + CH) | 386 | Турнирная таблица: PTS/xPTS/xG/PPDA + position |
+| `mart_top_scorers` | Mart (PG + CH) | 11 054 | Топ-скореры с teams_concat для трансферов |
