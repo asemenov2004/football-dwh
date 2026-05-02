@@ -81,7 +81,7 @@ data/          — bind-mounts (gitignored): postgres, minio, clickhouse, лог
 3. ✅ Raw Vault — dbt + datavault4dbt (hubs/links/satellites)
 4. ✅ Расширение RV: xG-стек Understat (matches/teams/players), bridge SB↔Understat, lnk_player_team с учётом мид-сезонных трансферов
 5. ✅ Business Vault (PIT/bridge) + Marts в Postgres + перелив в ClickHouse через Spark/MinIO
-6. Superset-дашборды поверх ClickHouse-витрин
+6. ✅ Superset-дашборды поверх ClickHouse-витрин (5 витрин, 6 чартов, native filters League/Season)
 7. Spark (расчёт Elo)
 8. CI + DQ + документация
 
@@ -124,6 +124,34 @@ WHERE league_id='epl' AND season_year=2025 ORDER BY goals_minus_xg DESC LIMIT 5;
 ```
 
 Pragmatic-замечание: **Spark пишет parquet в локальный mount-volume**, заливка в MinIO — отдельный `mc cp`. Прямая запись через `s3a://` требует hadoop-aws + aws-java-sdk-bundle (~273MB через Maven Central) — из РФ упорно фейлится connection refused. Для курсовой обходной путь не критичен, Spark остаётся в pipeline (JDBC + parquet-сериализация, демонстрация кластера).
+
+### Этап 6: Superset-дашборды (как запускать)
+
+После Этапа 5 (марты залиты в ClickHouse) — поднять дашборды:
+
+```bash
+# 1. (один раз) Образ Superset кастомный, с драйвером clickhouse-connect:
+docker compose build superset
+docker compose up -d superset
+
+# 2. Создать датасорс CH + 6 чартов + дашборд через REST API:
+python scripts/superset_create_charts.py
+# → http://localhost:8088/superset/dashboard/1/  (admin/admin)
+```
+
+Скрипт идемпотентный: повторный запуск обновит params существующих чартов.
+
+**Дашборд «Football DWH»**: 6 чартов поверх 5 ClickHouse-витрин + native filters
+**Лига** (default `epl`) и **Сезон** (default `2025`).
+
+| Чарт | Тип | Витрина |
+|---|---|---|
+| Турнирная таблица | table (raw) | mart_league_table |
+| Топ-15 бомбардиров: goals vs xG | grouped bar | mart_top_scorers |
+| Avg total_xG по неделям | area | mart_match_facts |
+| Топ-5 overperformers | table (raw) | mart_player_overperformers |
+| Top-10 команд по avg xG | dist bar | mart_team_xg_trend |
+| Топ-10 матчей по total_xG | table (raw) | mart_match_facts |
 
 ### Источники данных (Этап 4)
 

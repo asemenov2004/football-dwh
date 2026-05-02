@@ -285,7 +285,10 @@ services:
   # ---------- Superset: init ----------
   # $$VAR экранирует переменную от compose — подстановка идёт из env контейнера bash'ом.
   superset-init:
-    image: apache/superset:4.0.2
+    image: football_dwh/superset:local
+    build:
+      context: ./docker/superset
+      dockerfile: Dockerfile
     container_name: football_superset_init
     environment:
       SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY}
@@ -311,7 +314,10 @@ services:
 
   # ---------- Superset: webserver ----------
   superset:
-    image: apache/superset:4.0.2
+    image: football_dwh/superset:local
+    build:
+      context: ./docker/superset
+      dockerfile: Dockerfile
     container_name: football_superset
     environment:
       SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY}
