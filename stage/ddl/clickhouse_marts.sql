@@ -53,3 +53,69 @@ CREATE TABLE IF NOT EXISTS marts.mart_top_scorers
 )
 ENGINE = MergeTree()
 ORDER BY (league_id, season_year, player_bk);
+
+CREATE TABLE IF NOT EXISTS marts.mart_match_facts
+(
+    match_hk          String,
+    match_datetime    DateTime,
+    match_date        Date,
+    league_id         LowCardinality(String),
+    season_year       UInt16,
+    home_team_title   String,
+    away_team_title   String,
+    home_goals        UInt8,
+    away_goals        UInt8,
+    home_xg           Float64,
+    away_xg           Float64,
+    goal_diff         Int8,
+    xg_diff           Float64,
+    result            LowCardinality(String),
+    total_goals       UInt8,
+    total_xg          Float64
+)
+ENGINE = MergeTree()
+ORDER BY (league_id, season_year, match_date);
+
+CREATE TABLE IF NOT EXISTS marts.mart_player_overperformers
+(
+    player_hk          String,
+    player_bk          String,
+    player_name        String,
+    team_title         Nullable(String),
+    league_id          LowCardinality(String),
+    season_year        UInt16,
+    position           Nullable(String),
+    minutes            Nullable(UInt16),
+    games              Nullable(UInt8),
+    goals              Nullable(UInt8),
+    xg                 Nullable(Float64),
+    assists            Nullable(UInt8),
+    xa                 Nullable(Float64),
+    npxg               Nullable(Float64),
+    npg                Nullable(UInt8),
+    goals_minus_xg     Nullable(Float64),
+    assists_minus_xa   Nullable(Float64),
+    overperf_pct_rank  Nullable(Float64)
+)
+ENGINE = MergeTree()
+ORDER BY (league_id, season_year, player_hk);
+
+CREATE TABLE IF NOT EXISTS marts.mart_team_xg_trend
+(
+    league_id        LowCardinality(String),
+    season_year      UInt16,
+    team_title       String,
+    matches          UInt16,
+    avg_xg_for       Nullable(Float64),
+    avg_xg_against   Nullable(Float64),
+    std_xg_for       Nullable(Float64),
+    std_xg_against   Nullable(Float64),
+    max_xg_for       Nullable(Float64),
+    max_xg_against   Nullable(Float64),
+    total_gf         UInt32,
+    total_ga         UInt32,
+    gf_minus_xg      Nullable(Float64),
+    ga_minus_xga     Nullable(Float64)
+)
+ENGINE = MergeTree()
+ORDER BY (league_id, season_year, team_title);

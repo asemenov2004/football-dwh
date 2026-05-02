@@ -46,8 +46,11 @@ docker run --rm \
   minio/mc:RELEASE.2024-10-02T08-27-28Z \
   -c '
     mc rm --recursive --force local/marts/ >/dev/null 2>&1 || true
-    mc cp --recursive /output/mart_league_table local/marts/
-    mc cp --recursive /output/mart_top_scorers  local/marts/
+    mc cp --recursive /output/mart_league_table          local/marts/
+    mc cp --recursive /output/mart_top_scorers           local/marts/
+    mc cp --recursive /output/mart_match_facts           local/marts/
+    mc cp --recursive /output/mart_player_overperformers local/marts/
+    mc cp --recursive /output/mart_team_xg_trend         local/marts/
     echo "--- MinIO local/marts/ ---"
     mc ls --recursive local/marts/
   '
