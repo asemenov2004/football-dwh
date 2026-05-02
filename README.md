@@ -82,7 +82,7 @@ data/          — bind-mounts (gitignored): postgres, minio, clickhouse, лог
 4. ✅ Расширение RV: xG-стек Understat (matches/teams/players), bridge SB↔Understat, lnk_player_team с учётом мид-сезонных трансферов
 5. ✅ Business Vault (PIT/bridge) + Marts в Postgres + перелив в ClickHouse через Spark/MinIO
 6. ✅ Superset-дашборды поверх ClickHouse-витрин (5 витрин, 6 чартов, native filters League/Season)
-7. Spark (расчёт Elo)
+7. ✅ Spark расчёт Elo-рейтинга (per-league, ClubElo формула) + 2 витрины + 2 чарта в дашборде
 8. CI + DQ + документация
 
 ### Этап 5: BV + Marts + ClickHouse (как запускать)
@@ -124,6 +124,37 @@ WHERE league_id='epl' AND season_year=2025 ORDER BY goals_minus_xg DESC LIMIT 5;
 ```
 
 Pragmatic-замечание: **Spark пишет parquet в локальный mount-volume**, заливка в MinIO — отдельный `mc cp`. Прямая запись через `s3a://` требует hadoop-aws + aws-java-sdk-bundle (~273MB через Maven Central) — из РФ упорно фейлится connection refused. Для курсовой обходной путь не критичен, Spark остаётся в pipeline (JDBC + parquet-сериализация, демонстрация кластера).
+
+### Этап 7: Spark Elo-рейтинг (как запускать)
+
+Расчёт **per-league** Elo с формулой ClubElo (K=20, home_adv=100, ln(|gd|+1) при |gd|≥2,
+старт 1500). Запуск ПЕРЕД `run_spark_marts.sh` — Elo пишется в Postgres, потом
+переливается в parquet/CH общим конвейером:
+
+```bash
+# 1. Spark JDBC read mart_match_facts → cycle (driver-side) → JDBC write Elo:
+bash scripts/run_spark_elo.sh
+
+# 2. Затем стандартный перелив + DAG:
+bash scripts/run_spark_marts.sh
+docker exec football_airflow_scheduler airflow dags trigger build_marts
+```
+
+Spark тут — для JDBC-IO + демонстрации кластера в pipeline. Сам Elo считается
+строго последовательно (рейтинг N+1 зависит от N), параллелизм невозможен —
+Python-цикл на драйвере, ~1 сек на 6 901 матч.
+
+ClickHouse-витрины:
+
+```sql
+-- Топ команд по текущему Elo:
+SELECT team_title, round(current_rating, 1) AS elo, round(peak_rating, 1) AS peak, peak_match_date
+FROM marts.mart_team_elo_current WHERE league_id='epl' ORDER BY current_rating DESC LIMIT 10;
+
+-- Эволюция Elo Real Madrid за все сезоны:
+SELECT match_date, rating_after FROM marts.mart_team_elo_history
+WHERE team_title='Real Madrid' ORDER BY match_date;
+```
 
 ### Этап 6: Superset-дашборды (как запускать)
 
@@ -200,3 +231,5 @@ DV-stage views (`public_stage_dv`) читают `stage.*` и вычисляют 
 | `mart_match_facts` | Mart (PG + CH) | 6 901 | Матч-уровень (wide): дата/команды/счёт/xG/result. База для time-series в Superset |
 | `mart_player_overperformers` | Mart (PG + CH) | 7 832 | Игроки + goals−xG + percentile_rank внутри (league, season). Фильтр minutes ≥ 450 |
 | `mart_team_xg_trend` | Mart (PG + CH) | 386 | Агрегаты xG по матчам команды за сезон (avg/std/max). Дополняет league_table детализацией |
+| `mart_team_elo_current` | Mart (PG + CH) | 125 | Финальный Elo-рейтинг + peak per (team, league). Spark cycle, кросс-сезонный |
+| `mart_team_elo_history` | Mart (PG + CH) | 13 802 | История Elo: 2 строки на матч (per команду), флаг is_top3_in_league для line-чарта |

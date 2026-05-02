@@ -48,6 +48,10 @@ MARTS = [
      "s3('http://minio:9000/marts/mart_player_overperformers/*.parquet', '{ak}', '{sk}', 'Parquet')"),
     ("mart_team_xg_trend",
      "s3('http://minio:9000/marts/mart_team_xg_trend/*.parquet', '{ak}', '{sk}', 'Parquet')"),
+    ("mart_team_elo_current",
+     "s3('http://minio:9000/marts/mart_team_elo_current/*.parquet', '{ak}', '{sk}', 'Parquet')"),
+    ("mart_team_elo_history",
+     "s3('http://minio:9000/marts/mart_team_elo_history/*.parquet', '{ak}', '{sk}', 'Parquet')"),
 ]
 
 

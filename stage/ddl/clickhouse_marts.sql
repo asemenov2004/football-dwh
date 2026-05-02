@@ -119,3 +119,35 @@ CREATE TABLE IF NOT EXISTS marts.mart_team_xg_trend
 )
 ENGINE = MergeTree()
 ORDER BY (league_id, season_year, team_title);
+
+-- Этап 7: Elo-рейтинг (Spark calculate_elo.py)
+CREATE TABLE IF NOT EXISTS marts.mart_team_elo_history
+(
+    team_title         String,
+    league_id          LowCardinality(String),
+    season_year        UInt16,
+    match_date         Date,
+    opponent_title     String,
+    is_home            UInt8,
+    goals_for          Nullable(UInt8),
+    goals_against      Nullable(UInt8),
+    rating_before      Float64,
+    rating_after       Float64,
+    rating_delta       Float64,
+    is_top3_in_league  UInt8
+)
+ENGINE = MergeTree()
+ORDER BY (league_id, team_title, match_date);
+
+CREATE TABLE IF NOT EXISTS marts.mart_team_elo_current
+(
+    team_title        String,
+    league_id         LowCardinality(String),
+    current_rating    Float64,
+    peak_rating       Float64,
+    peak_match_date   Date,
+    matches_played    UInt16,
+    last_match_date   Date
+)
+ENGINE = MergeTree()
+ORDER BY (league_id, current_rating);

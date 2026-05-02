@@ -23,6 +23,8 @@ DATASETS = {
     "mart_match_facts": None,
     "mart_player_overperformers": None,
     "mart_team_xg_trend": None,
+    "mart_team_elo_current": None,
+    "mart_team_elo_history": None,
 }
 
 LEAGUE = "epl"
@@ -49,14 +51,22 @@ def login() -> tuple[requests.Session, dict[str, str]]:
 
 
 def resolve_datasets(s: requests.Session, h: dict[str, str]) -> None:
+    """Резолвит существующие + создаёт отсутствующие в CH-датасорсе (db id=1)."""
     r = s.get(f"{SUPERSET_URL}/api/v1/dataset/?q=(page_size:100)", headers=h)
     r.raise_for_status()
     for ds in r.json()["result"]:
         if ds["table_name"] in DATASETS:
             DATASETS[ds["table_name"]] = ds["id"]
-    missing = [k for k, v in DATASETS.items() if v is None]
-    if missing:
-        raise RuntimeError(f"missing datasets: {missing}")
+    for tbl, ds_id in list(DATASETS.items()):
+        if ds_id is not None:
+            continue
+        r = s.post(
+            f"{SUPERSET_URL}/api/v1/dataset/", headers=h,
+            json={"database": 1, "schema": "marts", "table_name": tbl},
+        )
+        r.raise_for_status()
+        DATASETS[tbl] = r.json()["id"]
+        print(f"  registered dataset {tbl} (id={DATASETS[tbl]})")
     print(f"datasets: {DATASETS}")
 
 
@@ -293,6 +303,65 @@ def chart_params() -> dict[str, dict[str, Any]]:
                 ],
             },
         },
+        "Топ-10 команд по Elo (текущий)": {
+            "viz_type": "dist_bar",
+            "dataset": "mart_team_elo_current",
+            "params": {
+                "groupby": ["team_title"],
+                "metrics": [
+                    {
+                        "expressionType": "SIMPLE",
+                        "column": {"column_name": "current_rating"},
+                        "aggregate": "MAX",
+                        "label": "Elo",
+                    }
+                ],
+                "row_limit": 10,
+                "order_desc": True,
+                "adhoc_filters": [],
+                "show_legend": False,
+                "color_scheme": "supersetColors",
+                "show_bar_value": True,
+                "y_axis_format": ".0f",
+                "x_axis_label": "Команда",
+                "y_axis_label": "Elo",
+            },
+        },
+        "Эволюция Elo: топ-3 команды лиги": {
+            "viz_type": "echarts_timeseries_line",
+            "dataset": "mart_team_elo_history",
+            "params": {
+                "x_axis": "match_date",
+                "time_grain_sqla": "P1M",
+                "metrics": [
+                    {
+                        "expressionType": "SIMPLE",
+                        "column": {"column_name": "rating_after"},
+                        "aggregate": "AVG",
+                        "label": "Elo",
+                    }
+                ],
+                "groupby": ["team_title"],
+                "row_limit": 5000,
+                "adhoc_filters": [
+                    {
+                        "expressionType": "SQL",
+                        "sqlExpression": "is_top3_in_league = 1",
+                        "clause": "WHERE",
+                    }
+                ],
+                "time_range": "No filter",
+                "show_legend": True,
+                "legendOrientation": "top",
+                "color_scheme": "supersetColors",
+                "x_axis_title": "Месяц",
+                "y_axis_title": "Elo",
+                "rich_tooltip": True,
+                "truncateYAxis": True,
+                "logAxis": False,
+                "markerEnabled": True,
+            },
+        },
     }
 
 
@@ -313,9 +382,10 @@ def build_dashboard_layout(chart_ids: dict[str, int]) -> dict[str, Any]:
 
     names = list(chart_ids.keys())
     rows = [
-        (names[0], names[3]),  # таблица + topo overperformers
-        (names[1], names[4]),  # bar bombardirov + bar teams
-        (names[2], names[5]),  # area + matches
+        (names[0], names[3]),  # таблица + top overperformers
+        (names[1], names[4]),  # bar bombardirov + bar teams xG
+        (names[2], names[5]),  # area xG + матчи
+        (names[6], names[7]),  # Elo bar + Elo line
     ]
 
     layout: dict[str, Any] = {
@@ -385,9 +455,12 @@ def build_native_filters() -> list[dict[str, Any]]:
         {"datasetId": ds_id, "column": {"name": "league_id"}}
         for ds_id in DATASETS.values()
     ]
+    # Elo-витрины кросс-сезонные (рейтинг накапливается через все сезоны),
+    # season filter к ним не применяем — иначе history-график будет урезан.
     targets_season = [
         {"datasetId": ds_id, "column": {"name": "season_year"}}
-        for ds_id in DATASETS.values()
+        for name, ds_id in DATASETS.items()
+        if name not in ("mart_team_elo_current", "mart_team_elo_history")
     ]
     return [
         {
