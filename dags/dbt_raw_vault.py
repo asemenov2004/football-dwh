@@ -1,10 +1,7 @@
-"""DAG: Raw Vault — dbt build поверх stage-таблиц Postgres.
+"""Raw Vault: dbt build (stage_dv + raw_vault) → Postgres.
 
-schedule=None — триггерится автоматически из stage_load_api_football.
-Последовательность: dbt_deps → dbt_run_stage → dbt_run_raw_vault → dbt_test.
-
-dbt запускается через BashOperator внутри airflow-контейнера.
-Проект смонтирован как /opt/airflow/dbt (volume в docker-compose).
+Триггерится по Dataset ds_understat_stage. По завершении публикует ds_raw_vault
+(пока никто не подписан — build_marts остаётся manual из-за Spark-зависимости).
 """
 from __future__ import annotations
 
@@ -12,6 +9,9 @@ from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.operators.bash import BashOperator
+from airflow.operators.empty import EmptyOperator
+
+from _datasets import ds_raw_vault, ds_understat_stage
 
 DEFAULT_ARGS = {
     "owner": "football_dwh",
@@ -32,7 +32,7 @@ with DAG(
     dag_id="dbt_raw_vault",
     description="Raw Vault: dbt build (stage_dv + raw_vault) → Postgres",
     start_date=datetime(2026, 4, 1),
-    schedule=None,
+    schedule=[ds_understat_stage],
     max_active_runs=1,
     default_args=DEFAULT_ARGS,
     catchup=False,
@@ -62,4 +62,9 @@ with DAG(
         ),
     )
 
-    dbt_deps >> dbt_run_stage >> dbt_run_raw_vault >> dbt_test
+    publish = EmptyOperator(
+        task_id="publish_dataset",
+        outlets=[ds_raw_vault],
+    )
+
+    dbt_deps >> dbt_run_stage >> dbt_run_raw_vault >> dbt_test >> publish

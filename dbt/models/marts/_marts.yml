@@ -65,6 +65,19 @@ models:
       - dbt_utils.expression_is_true:
           expression: "minutes >= 450"
 
+  - name: mart_sb_la_liga_history
+    description: "StatsBomb: история Barcelona в La Liga по сезонам. Демо end-to-end SB-конвейера."
+    columns:
+      - name: season_year
+        tests:
+          - not_null
+          - unique
+      - name: matches_played
+        tests: [not_null]
+    tests:
+      - dbt_utils.expression_is_true:
+          expression: "wins + draws + losses = matches_played"
+
   - name: mart_team_xg_trend
     description: "Агрегаты xG по матчам команды за сезон (avg/std/max). Грейн: team × league × season."
     columns:

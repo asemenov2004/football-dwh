@@ -151,3 +151,19 @@ CREATE TABLE IF NOT EXISTS marts.mart_team_elo_current
 )
 ENGINE = MergeTree()
 ORDER BY (league_id, current_rating);
+
+-- Этап 8: StatsBomb — история Barcelona в La Liga (демо мульти-источника).
+CREATE TABLE IF NOT EXISTS marts.mart_sb_la_liga_history
+(
+    season_year         UInt16,
+    matches_played      UInt16,
+    wins                UInt16,
+    draws               UInt16,
+    losses              UInt16,
+    goals_scored        UInt16,
+    goals_conceded      UInt16,
+    avg_goals_scored    Float64,
+    avg_goals_conceded  Float64
+)
+ENGINE = MergeTree()
+ORDER BY season_year;

@@ -52,6 +52,8 @@ MARTS = [
      "s3('http://minio:9000/marts/mart_team_elo_current/*.parquet', '{ak}', '{sk}', 'Parquet')"),
     ("mart_team_elo_history",
      "s3('http://minio:9000/marts/mart_team_elo_history/*.parquet', '{ak}', '{sk}', 'Parquet')"),
+    ("mart_sb_la_liga_history",
+     "s3('http://minio:9000/marts/mart_sb_la_liga_history/*.parquet', '{ak}', '{sk}', 'Parquet')"),
 ]
 
 

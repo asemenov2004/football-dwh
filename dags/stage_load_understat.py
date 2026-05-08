@@ -1,7 +1,7 @@
-"""DAG: загрузка Understat JSON из MinIO в stage.understat_* Postgres.
+"""Stage load: MinIO (understat) → Postgres stage.understat_*.
 
-schedule=None — триггерится из ingest_understat.
-По завершении триггерит dbt_raw_vault.
+Триггерится по Dataset ds_understat_raw (см. dags/_datasets.py).
+По завершении публикует ds_understat_stage → запускает dbt_raw_vault.
 """
 from __future__ import annotations
 
@@ -9,9 +9,10 @@ from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.models.param import Param
+from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import PythonOperator
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
+from _datasets import ds_understat_raw, ds_understat_stage
 from stage.loaders import understat as us_loader
 
 DEFAULT_ARGS = {
@@ -34,7 +35,7 @@ with DAG(
     dag_id="stage_load_understat",
     description="Stage load: MinIO (understat) → Postgres stage.understat_*",
     start_date=datetime(2026, 4, 1),
-    schedule=None,
+    schedule=[ds_understat_raw],
     catchup=False,
     default_args=DEFAULT_ARGS,
     params={"season": Param(default=2025, type=["integer", "string"])},
@@ -53,10 +54,8 @@ with DAG(
         task_id="load_matches",
         python_callable=_wrap(us_loader.load_matches),
     )
-    trigger_dbt = TriggerDagRunOperator(
-        task_id="trigger_dbt_raw_vault",
-        trigger_dag_id="dbt_raw_vault",
-        wait_for_completion=False,
-        reset_dag_run=True,
+    publish = EmptyOperator(
+        task_id="publish_dataset",
+        outlets=[ds_understat_stage],
     )
-    [t_players, t_teams, t_matches] >> trigger_dbt
+    [t_players, t_teams, t_matches] >> publish

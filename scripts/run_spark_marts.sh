@@ -53,6 +53,7 @@ docker run --rm \
     mc cp --recursive /output/mart_team_xg_trend         local/marts/
     mc cp --recursive /output/mart_team_elo_current      local/marts/
     mc cp --recursive /output/mart_team_elo_history      local/marts/
+    mc cp --recursive /output/mart_sb_la_liga_history    local/marts/
     echo "--- MinIO local/marts/ ---"
     mc ls --recursive local/marts/
   '

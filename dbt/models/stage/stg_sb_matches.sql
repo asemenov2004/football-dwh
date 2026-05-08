@@ -21,6 +21,8 @@ extracted AS (
         -- Счёт из JSONB
         (raw_payload ->> 'home_score')::int                  AS home_goals,
         (raw_payload ->> 'away_score')::int                  AS away_goals,
+        raw_payload ->> 'home_team'                          AS home_team,
+        raw_payload ->> 'away_team'                          AS away_team,
         raw_payload ->> 'match_status'                       AS match_status,
         (raw_payload ->> 'match_date')::timestamptz          AS match_ts
     FROM src
@@ -37,9 +39,14 @@ SELECT
     cast(match_id AS text)                                           AS match_id,
     'sb' || '|' || cast(match_id AS text)                           AS match_bk,
 
+    -- league_id slug — нужен для март-витрин SB (фильтр La Liga и т.п.).
+    league_id,
+
     -- Payload для sat_match_score
     home_goals,
     away_goals,
+    home_team,
+    away_team,
     match_status,
     match_ts,
 

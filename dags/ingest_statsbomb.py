@@ -1,20 +1,7 @@
-"""DAG: загрузка StatsBomb Open Data по топ-5 лигам + UCL в raw lake.
+"""StatsBomb Open Data → raw lake (manual). По завершении триггерит stage_load_statsbomb.
 
-schedule=None — запускается вручную когда нужно обновить SB-данные.
-Open Data статичен, ежедневный запуск не имеет смысла.
-
-По завершении триггерит stage_load_statsbomb.
-
-Схема задач:
-    ingest_competitions
-        ├─> matches__epl
-        ├─> matches__la_liga
-        ├─> matches__serie_a
-        ├─> matches__bundesliga
-        ├─> matches__ligue_1
-        └─> matches__ucl
-
-Если для лиги в Open Data ничего нет — task успешен с WARNING.
+SB Open Data статичен, поэтому schedule=None. Если для лиги в Open Data
+ничего нет — task успешен с WARNING.
 """
 from __future__ import annotations
 

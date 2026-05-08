@@ -1,16 +1,8 @@
-"""Spark-джоба: PG (public_marts.*) → Parquet в локальной папке /opt/spark/jobs/output/.
-Заливка в MinIO делается отдельным шагом через `mc cp` (см. scripts/run_spark_marts.sh).
+"""Spark: PG public_marts.* → Parquet в /opt/spark/jobs/output/.
 
-Почему не s3a:
-    Прямая запись в MinIO требует hadoop-aws + aws-java-sdk-bundle (~273MB).
-    Скачивание через Maven Central часто упирается в connection refused.
-    Pragmatic choice: Spark делает heavy lifting (JDBC + parquet), MinIO upload
-    отдельной командой через `mc` (уже есть в minio-init контейнере).
-
-Запуск (driver-mode local в spark-master контейнере, см. scripts/run_spark_marts.sh):
-    spark-submit --master local[*] \\
-      --packages org.postgresql:postgresql:42.7.4 \\
-      /opt/spark/jobs/jobs/marts_pg_to_minio.py
+Запись в MinIO отдельным шагом через `mc cp` (scripts/run_spark_marts.sh) —
+прямой s3a требует aws-java-sdk-bundle ~273MB через Maven, который из РФ
+часто отдаётся с connection refused.
 """
 from __future__ import annotations
 
@@ -37,6 +29,7 @@ MARTS = [
     ("public_marts.mart_team_xg_trend",         f"{OUTPUT_DIR}/mart_team_xg_trend"),
     ("public_marts.mart_team_elo_current",      f"{OUTPUT_DIR}/mart_team_elo_current"),
     ("public_marts.mart_team_elo_history",      f"{OUTPUT_DIR}/mart_team_elo_history"),
+    ("public_marts.mart_sb_la_liga_history",    f"{OUTPUT_DIR}/mart_sb_la_liga_history"),
 ]
 
 

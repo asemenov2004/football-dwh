@@ -1,7 +1,7 @@
-"""DAG: ежедневный snapshot текущего сезона Understat → MinIO.
+"""Ежедневный snapshot текущего сезона Understat → MinIO. Cron 04:00 UTC.
 
-Расписание: 04:00 UTC каждый день. По завершении триггерит stage_load_understat.
-Без rate-limit — Understat публичный сайт без API-ключей.
+Барьер-таск publish_dataset публикует Dataset ds_understat_raw только после
+всех ingestion-тасков — иначе stage-DAG триггернётся раньше времени.
 """
 from __future__ import annotations
 
@@ -9,9 +9,10 @@ from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.models.param import Param
+from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import PythonOperator
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
+from _datasets import ds_understat_raw
 from _understat_tasks import (
     ensure_bucket,
     ingest_matches,
@@ -66,11 +67,8 @@ with DAG(
             t_ensure >> t
             last_tasks.append(t)
 
-    trigger_stage = TriggerDagRunOperator(
-        task_id="trigger_stage_load_understat",
-        trigger_dag_id="stage_load_understat",
-        conf={"season": "{{ params.season }}"},
-        wait_for_completion=False,
-        reset_dag_run=True,
+    publish = EmptyOperator(
+        task_id="publish_dataset",
+        outlets=[ds_understat_raw],
     )
-    last_tasks >> trigger_stage
+    last_tasks >> publish

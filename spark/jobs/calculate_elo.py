@@ -1,32 +1,14 @@
-"""Spark-джоба: расчёт Elo-рейтинга команд по матчам Understat.
+"""Spark: расчёт Elo команд по матчам Understat.
 
-Источник: public_marts.mart_match_facts (PG, ~6 901 матч, 5 лиг × 4 сезона).
-Per-league: каждая лига — изолированный пул рейтингов, старт 1500. Если команда
-играет только в одной лиге — её league_id фиксирован; для команд, которые в
-течение проекта побывали в нескольких лигах (промоушн/релегейшн), считаем
-независимые рейтинги per (league, team) — это упрощение, но в рамках курсовой
-ок (overlap минимальный, на витрине будет видно отдельной строкой на лигу).
+Источник — public_marts.mart_match_facts. Формула ClubElo (K=20, home=+100,
+goal-diff modifier ln(|gd|+1) при |gd|>=2). Per-league: каждая лига —
+изолированный пул, старт 1500.
 
-Формула — стандарт ClubElo:
-  - K = 20
-  - home advantage = 100 (хозяева получают +100 для расчёта expected)
-  - goal-difference modifier: при |gd| >= 2 → K *= ln(|gd|+1) ≈ 1.099 (gd=2),
-    1.386 (gd=3), 1.609 (gd=4), ...
-  - score: win=1.0, draw=0.5, loss=0.0
-  - Expected_home = 1 / (1 + 10^((R_away - R_home - 100) / 400))
-  - R_new = R + K_eff * (S - E)
+Elo строго последовательный (рейтинг N+1 зависит от N) → цикл на драйвере.
+Spark здесь нужен для JDBC-IO и демонстрации кластера в pipeline; на 6.9k
+матчах цикл <1 сек.
 
-ВАЖНО: Elo строго последовательный (рейтинг N+1 зависит от N), поэтому
-расчёт ведётся в Python-цикле на драйвере. Spark тут — для JDBC-IO + демонстрации
-кластера в pipeline. На 6 901 матче цикл занимает <1 сек, проблем нет.
-
-Output → public_marts (Postgres):
-  - mart_team_elo_history: 2 строки на матч (одна per команду)
-  - mart_team_elo_current: финальный рейтинг + peak per (team, league)
-
-Запуск (через scripts/run_spark_elo.sh):
-  spark-submit --master local[*] --packages org.postgresql:postgresql:42.7.4 \
-    /opt/spark/jobs/jobs/calculate_elo.py
+Запуск: scripts/run_spark_elo.sh.
 """
 from __future__ import annotations
 

@@ -83,7 +83,29 @@ data/          — bind-mounts (gitignored): postgres, minio, clickhouse, лог
 5. ✅ Business Vault (PIT/bridge) + Marts в Postgres + перелив в ClickHouse через Spark/MinIO
 6. ✅ Superset-дашборды поверх ClickHouse-витрин (5 витрин, 6 чартов, native filters League/Season)
 7. ✅ Spark расчёт Elo-рейтинга (per-league, ClubElo формула) + 2 витрины + 2 чарта в дашборде
-8. CI + DQ + документация
+8. ✅ Polish: SB-витрина (`mart_sb_la_liga_history`), Datasets-цепочка, дашборд #2 «European Teams», единый формат `.2f` для xG, чистка комментариев
+9. CI + DQ + документация (диаграммы C4/DFD/ER)
+
+### Этап 8: Datasets-цепочка (как работает)
+
+После ingest_understat_daily публикуется Airflow Dataset `s3://raw-understat/` —
+по нему автоматически запускается `stage_load_understat`, который публикует
+`postgres://stage.understat`, тот в свою очередь триггерит `dbt_raw_vault`.
+
+```
+ingest_understat_daily (cron 04:00)
+    ↓ ds_understat_raw
+stage_load_understat
+    ↓ ds_understat_stage
+dbt_raw_vault
+    ↓ ds_raw_vault   (no subscribers — build_marts manual)
+```
+
+`build_marts` остаётся manual: требует `docker exec spark-submit` с хоста
+(см. Этап 5), а у airflow-контейнера нет docker socket. SB и `ingest_understat_historical`
+тоже manual — это one-off backfill-DAG'и, не релевантны daily-расписанию.
+
+В UI Airflow вкладка **Datasets** показывает граф зависимостей.
 
 ### Этап 5: BV + Marts + ClickHouse (как запускать)
 
@@ -172,7 +194,7 @@ python scripts/superset_create_charts.py
 
 Скрипт идемпотентный: повторный запуск обновит params существующих чартов.
 
-**Дашборд «Football DWH»**: 6 чартов поверх 5 ClickHouse-витрин + native filters
+**Дашборд «Football DWH»** (основной): 9 чартов поверх ClickHouse-витрин + native filters
 **Лига** (default `epl`) и **Сезон** (default `2025`).
 
 | Чарт | Тип | Витрина |
@@ -183,6 +205,19 @@ python scripts/superset_create_charts.py
 | Топ-5 overperformers | table (raw) | mart_player_overperformers |
 | Top-10 команд по avg xG | dist bar | mart_team_xg_trend |
 | Топ-10 матчей по total_xG | table (raw) | mart_match_facts |
+| Топ-10 команд по Elo (текущий) | dist bar | mart_team_elo_current |
+| Эволюция Elo: топ-3 команды лиги | line | mart_team_elo_history |
+| StatsBomb: La Liga по сезонам | table | mart_sb_la_liga_history |
+
+**Дашборд «Football DWH — European Teams»** (Этап 8): кросс-лиговые витрины,
+без фильтра лиги — видна вся топ-5 + UCL разом.
+
+| Чарт | Тип | Витрина |
+|---|---|---|
+| Топ-20 клубов Европы по Elo | dist bar | mart_team_elo_current |
+| PTS vs xPTS (over/underperform) | scatter | mart_league_table |
+| Heatmap: команды × сезон → PTS | heatmap | mart_league_table |
+| Топ-апсеты сезона: xG проиграл результату | table | mart_match_facts |
 
 ### Источники данных (Этап 4)
 
@@ -233,3 +268,4 @@ DV-stage views (`public_stage_dv`) читают `stage.*` и вычисляют 
 | `mart_team_xg_trend` | Mart (PG + CH) | 386 | Агрегаты xG по матчам команды за сезон (avg/std/max). Дополняет league_table детализацией |
 | `mart_team_elo_current` | Mart (PG + CH) | 125 | Финальный Elo-рейтинг + peak per (team, league). Spark cycle, кросс-сезонный |
 | `mart_team_elo_history` | Mart (PG + CH) | 13 802 | История Elo: 2 строки на матч (per команду), флаг is_top3_in_league для line-чарта |
+| `mart_sb_la_liga_history` | Mart (PG + CH) | 18 | StatsBomb La Liga по сезонам: matches/wins/draws/avg_total_goals (Этап 8, демо мульти-источника) |
