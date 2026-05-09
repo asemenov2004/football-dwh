@@ -47,7 +47,7 @@ install.cmd
 *.swp
 *.swo
 
-# Generated docs (regenerated via scripts/build_report_docx.sh)
+# Generated docs (regenerated via scripts)
 docs/отчёт.docx
 
 # OS
