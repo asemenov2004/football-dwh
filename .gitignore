@@ -47,6 +47,9 @@ install.cmd
 *.swp
 *.swo
 
+# Generated docs (regenerated via scripts/build_report_docx.sh)
+docs/отчёт.docx
+
 # OS
 .DS_Store
 Thumbs.db
