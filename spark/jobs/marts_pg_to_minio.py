@@ -1,13 +1,8 @@
 """Spark: PG public_marts.* → Parquet в /opt/spark/jobs/output/.
-
-Запись в MinIO отдельным шагом через `mc cp` (scripts/run_spark_marts.sh) —
-прямой s3a требует aws-java-sdk-bundle ~273MB через Maven, который из РФ
-часто отдаётся с connection refused.
 """
 from __future__ import annotations
 
 import os
-import shutil
 import sys
 
 from pyspark.sql import SparkSession
@@ -52,9 +47,9 @@ def transfer(spark: SparkSession, dbtable: str, out_path: str) -> int:
         .load()
     )
     rows = df.count()
-    # Чистим перед записью — overwrite (марты не append-only).
-    if os.path.isdir(out_path):
-        shutil.rmtree(out_path)
+    # mode("overwrite") сам удалит старое содержимое. shutil.rmtree использовать
+    # нельзя: при запуске из Airflow driver — uid 50000, а файлы создавал
+    # spark-worker (uid 185), unlink падает с PermissionError.
     df.coalesce(1).write.mode("overwrite").parquet(out_path)
     print(f"[marts_pg_to_minio] {dbtable} -> {out_path}  rows={rows}", flush=True)
     return rows

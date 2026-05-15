@@ -1,4 +1,4 @@
--- ClickHouse DDL для март-витрин Этапа 5.
+-- ClickHouse DDL для витрин
 -- Загрузка данных идёт DAG'ом build_marts через INSERT FROM s3() из MinIO.
 -- Идемпотентно: CREATE DATABASE/TABLE IF NOT EXISTS.
 
@@ -120,7 +120,6 @@ CREATE TABLE IF NOT EXISTS marts.mart_team_xg_trend
 ENGINE = MergeTree()
 ORDER BY (league_id, season_year, team_title);
 
--- Этап 7: Elo-рейтинг (Spark calculate_elo.py)
 CREATE TABLE IF NOT EXISTS marts.mart_team_elo_history
 (
     team_title         String,
@@ -152,7 +151,6 @@ CREATE TABLE IF NOT EXISTS marts.mart_team_elo_current
 ENGINE = MergeTree()
 ORDER BY (league_id, current_rating);
 
--- Этап 8: StatsBomb — история Barcelona в La Liga (демо мульти-источника).
 CREATE TABLE IF NOT EXISTS marts.mart_sb_la_liga_history
 (
     season_year         UInt16,

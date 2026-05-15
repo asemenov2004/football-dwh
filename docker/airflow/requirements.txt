@@ -20,6 +20,9 @@ understat==0.1.14
 aiohttp==3.8.3
 
 # Этап 5б — ClickHouse-загрузка из MinIO (HTTP клиент).
-# Spark-перелив запускается отдельным скриптом scripts/run_spark_marts.sh
-# через `docker exec football_spark_master spark-submit ...`.
 clickhouse-connect==0.7.19
+
+# Этап 5б — Spark-submit из Airflow DAG build_marts (client mode).
+# pyspark тащит spark-submit + jars (~300MB). Provider даёт SparkSubmitOperator.
+pyspark==3.5.8
+apache-airflow-providers-apache-spark==4.8.2

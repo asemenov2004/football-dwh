@@ -22,19 +22,15 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
     AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
-    # Чтобы DAG-и видели ingestion/ и stage/ модули.
     PYTHONPATH: "/opt/airflow:/opt/airflow/ingestion:/opt/airflow/stage"
-    # Этап 1: ingestion читает эти переменные напрямую из окружения
     MINIO_ENDPOINT: "minio:9000"
     MINIO_ROOT_USER: ${MINIO_ROOT_USER}
     MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-    # Этап 2: stage-loader ходит в Postgres DWH
     POSTGRES_HOST: "postgres"
     POSTGRES_INTERNAL_PORT: "5432"
     POSTGRES_USER: ${POSTGRES_USER}
     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     POSTGRES_DWH_DB: ${POSTGRES_DWH_DB}
-    # Этап 3: dbt — профили и таргет
     DBT_PROFILES_DIR: "/opt/airflow/dbt"
     DBT_TARGET: "prod"
   volumes:
@@ -44,6 +40,8 @@ x-airflow-common: &airflow-common
     - ./dbt:/opt/airflow/dbt
     - ./data/airflow/logs:/opt/airflow/logs
     - ./data/airflow/plugins:/opt/airflow/plugins
+    - ./spark/output:/opt/airflow/spark_output:ro
+    - ./spark:/opt/spark/jobs
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     postgres:
@@ -235,6 +233,12 @@ services:
             --password "${AIRFLOW_ADMIN_PASSWORD}" \
             --firstname Admin --lastname User \
             --role Admin --email admin@example.com
+        # Connection spark_default: SparkSubmitOperator идёт на spark-master:7077
+        airflow connections delete spark_default 2>/dev/null || true
+        airflow connections add spark_default \
+          --conn-type spark \
+          --conn-host spark://spark-master \
+          --conn-port 7077
     restart: "no"
     networks: [football_net]
 
@@ -343,8 +347,13 @@ services:
 
   # ---------- Spark: master ----------
   # apache/spark образ без обвязки Bitnami — процессы запускаем через spark-class явно.
+  # Кастомный Dockerfile добавляет Python 3.11 — иначе PySpark executor падает
+  # с PYTHON_VERSION_MISMATCH при работе с Airflow driver на Python 3.11.
   spark-master:
-    image: apache/spark:3.5.8
+    image: football_dwh/spark:local
+    build:
+      context: ./docker/spark
+      dockerfile: Dockerfile
     container_name: football_spark_master
     command: >
       /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
@@ -362,9 +371,17 @@ services:
     restart: unless-stopped
 
   # ---------- Spark: worker ----------
+  # uid=50000 — тот же, что Airflow. Driver (Airflow) и executor (worker)
+  # шарят volume /opt/spark/jobs; общий uid снимает permission-конфликты
+  # на _temporary/. Пользователь airflow создан в docker/spark/Dockerfile,
+  # чтобы Hadoop UserGroupInformation мог его залогинить.
   spark-worker:
-    image: apache/spark:3.5.8
+    image: football_dwh/spark:local
+    build:
+      context: ./docker/spark
+      dockerfile: Dockerfile
     container_name: football_spark_worker
+    user: "airflow"
     command: >
       /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker
       spark://spark-master:7077
