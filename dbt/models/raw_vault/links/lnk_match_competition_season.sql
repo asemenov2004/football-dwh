@@ -1,7 +1,4 @@
 -- Link: матч ↔ турнир ↔ сезон.
--- Источник: stg_understat_matches. Каждый Understat-матч принадлежит ровно
--- одной паре (лига, сезон). Для SB-матчей аналогичная связь не строится
--- на этом этапе (Антон: SB остаётся изолированным).
 
 {{ config(materialized='incremental', unique_key='lnk_match_comp_season_hk') }}
 

@@ -278,16 +278,28 @@ def slide_diagram(prs: Presentation, num: int, title: str, image_path: Path,
     slide_header(slide, num, title)
 
     if image_path.exists():
-        # Картинка по центру с максимальным размером
-        slide.shapes.add_picture(str(image_path),
-                                  Inches(1.0), Inches(2.0),
-                                  width=Inches(11.3), height=Inches(4.7))
+        # Подгоняем картинку пропорционально под доступную область,
+        # не растягивая по обеим осям (чтобы не было искажений)
+        from PIL import Image
+        with Image.open(image_path) as img:
+            iw, ih = img.size
+        avail_w = Inches(12.0)
+        avail_h = Inches(4.85)
+        ratio_w = avail_w / iw
+        ratio_h = avail_h / ih
+        ratio = min(ratio_w, ratio_h)
+        pic_w = int(iw * ratio)
+        pic_h = int(ih * ratio)
+        # центрируем
+        left = (SLIDE_W - pic_w) // 2
+        top = Inches(1.95) + (avail_h - pic_h) // 2
+        slide.shapes.add_picture(str(image_path), left, top, width=pic_w, height=pic_h)
     else:
         add_text(slide, Inches(0.5), Inches(3.5), Inches(12), Inches(0.5),
                  f"[image not found: {image_path.name}]", size=14, color=ACCENT_3,
                  align=PP_ALIGN.CENTER)
 
-    add_text(slide, Inches(0.5), Inches(6.85), Inches(12.3), Inches(0.5),
+    add_text(slide, Inches(0.5), Inches(6.95), Inches(12.3), Inches(0.4),
              caption, size=12, color=TXT_MUTED, align=PP_ALIGN.CENTER)
 
 

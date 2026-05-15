@@ -1,7 +1,7 @@
 """DAG: загрузка StatsBomb Open Data JSON из MinIO в stage.sb_* Postgres.
 
 schedule=None — триггерится автоматически из ingest_statsbomb.
-Не триггерит dbt_raw_vault — dbt запускается только из AF-пайплайна.
+Не триггерит dbt_raw_vault — dbt запускается только из understat-пайплайна.
 """
 from __future__ import annotations
 

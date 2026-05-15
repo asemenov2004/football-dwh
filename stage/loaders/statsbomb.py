@@ -4,10 +4,6 @@ competitions — один файл на dt, плоский массив турн
 Data, не только наши лиги). Для stage фильтруем по парам
 (country_name, competition_name) из config.LEAGUES — не раздуваем Vault
 турнирами, которые нам не нужны.
-
-matches — для каждой лиги много сезонов. Поскольку набор сезонов меняется
-между релизами Open Data, сканируем MinIO-префикс и берём всё за
-указанную dt.
 """
 from __future__ import annotations
 

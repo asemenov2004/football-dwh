@@ -1,4 +1,4 @@
-"""Обёртка над statsbombpy для Open Data.
+"""Обёртка над statsbombpy
 
 statsbombpy по умолчанию возвращает pandas.DataFrame. Для raw lake
 нужен сериализуемый JSON — берём DataFrame и кастуем в list[dict]

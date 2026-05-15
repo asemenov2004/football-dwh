@@ -1,6 +1,4 @@
 """Общие task-функции для Understat-ingest DAG'ов (daily + historical).
-
-Underscore-префикс — Airflow не парсит файл как DAG.
 """
 from __future__ import annotations
 

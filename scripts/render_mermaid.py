@@ -4,7 +4,9 @@
 из Google CDN (заблокирован из РФ). Здесь используем уже установленный
 Selenium ChromeDriver и mermaid.js с jsDelivr CDN.
 
-Выход: docs/diagrams/png/<filename>_<idx>.png
+Высокое разрешение через CDP Page.captureScreenshot scale=3.
+
+Выход: docs/diagrams/png/<filename>.png
 
 Запуск: python scripts/render_mermaid.py
 """
@@ -39,7 +41,6 @@ HTML_TEMPLATE = """<!doctype html>
     -webkit-font-smoothing: antialiased;
   }}
   #diagram {{ display: inline-block; }}
-  /* Mermaid выдаёт SVG — заставим его рендериться крупно */
   #diagram svg {{
     width: auto !important;
     height: auto !important;
@@ -105,7 +106,7 @@ def render_block(driver: webdriver.Chrome, code: str, out_path: Path) -> None:
     driver.set_window_size(width, height)
     time.sleep(0.5)
 
-    # Снимаем через CDP в высоком DPI (deviceScaleFactor=3 ⇒ ~3x размер)
+    # Снимаем через CDP в высоком DPI (scale=3 ⇒ ~3x размер)
     location = elem.location
     rect_size = elem.size
     clip = {
